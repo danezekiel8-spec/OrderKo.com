@@ -23,7 +23,7 @@ export default async function OrderPage({
       customerAccessToken: accessToken,
     },
     include: {
-      restaurant: { select: { name: true, currency: true } },
+      restaurant: { select: { name: true, slug: true, currency: true } },
       items: true,
       statusEvents: { orderBy: { createdAt: "asc" } },
     },

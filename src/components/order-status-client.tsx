@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { OrderStatus, PaymentStatus } from "@prisma/client";
 import { customerStatuses, statusLabels } from "@/lib/order-state";
@@ -18,7 +19,7 @@ type OrderStatusResponse = {
     totalCents: number;
     createdAt: string;
     updatedAt: string;
-    restaurant: { name: string; currency: string };
+    restaurant: { name: string; slug: string; currency: string };
     items: {
       id: string;
       name: string;
@@ -153,6 +154,7 @@ export function OrderStatusClient({
                 : "This order was canceled. Please speak with staff if this looks wrong.";
   const readyForPickup = order.status === "READY_FOR_PICKUP";
   const canceled = order.status === "CANCELED";
+  const completed = order.status === "COMPLETED";
 
   return (
     <main className="min-h-screen bg-[#f7f4ed] px-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))] text-[#182522] sm:px-4 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pt-[calc(1rem+env(safe-area-inset-top))]">
@@ -187,6 +189,14 @@ export function OrderStatusClient({
                 <p className="mt-3 rounded-xl bg-white/80 p-3 text-sm leading-6 text-teal-950">
                   Updates are paused while the connection recovers. Keep this page open; it will retry automatically.
                 </p>
+              ) : null}
+              {completed ? (
+                <Link
+                  href={`/r/${order.restaurant.slug}`}
+                  className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl bg-[#13201d] px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800"
+                >
+                  Close order and return to menu
+                </Link>
               ) : null}
             </div>
           </div>

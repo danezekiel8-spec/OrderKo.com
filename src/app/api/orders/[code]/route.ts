@@ -20,7 +20,7 @@ export async function GET(
       customerAccessToken: accessToken,
     },
     include: {
-      restaurant: { select: { name: true, currency: true } },
+      restaurant: { select: { name: true, slug: true, currency: true } },
       items: true,
       statusEvents: { orderBy: { createdAt: "asc" } },
     },
