@@ -33,7 +33,8 @@ export function StaffLogin() {
         body: JSON.stringify({ role, pin }),
       });
       if (!response.ok) {
-        setError("Invalid PIN for this role.");
+        const result = (await response.json().catch(() => null)) as { error?: string } | null;
+        setError(result?.error ?? "Invalid PIN for this role.");
         return;
       }
       const fallback = role === "admin" ? "/admin" : `/staff/${role}`;

@@ -10,7 +10,7 @@ function requestKey(request: NextRequest) {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
 }
 
-function isRateLimited(key: string) {
+function recordFailedAttempt(key: string) {
   const now = Date.now();
   const current = attempts.get(key);
   if (!current || current.resetAt <= now) {
@@ -22,17 +22,16 @@ function isRateLimited(key: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const key = requestKey(request);
-  if (isRateLimited(key)) {
-    return NextResponse.json({ error: "Too many sign-in attempts. Try again in a few minutes." }, { status: 429 });
-  }
-
   const body = (await request.json().catch(() => null)) as {
     role?: StaffRole;
     pin?: string;
   } | null;
 
+  const key = `${requestKey(request)}:${body?.role ?? "unknown"}`;
   if (!body?.role || !roles.includes(body.role) || !body.pin || !isPinValid(body.role, body.pin)) {
+    if (recordFailedAttempt(key)) {
+      return NextResponse.json({ error: "Too many sign-in attempts. Try again in a few minutes." }, { status: 429 });
+    }
     return NextResponse.json({ error: "Invalid role or PIN." }, { status: 401 });
   }
 
