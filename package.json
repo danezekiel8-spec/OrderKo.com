@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/start.js",
+    "start:next": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "env:check": "node scripts/check-env.js",
@@ -18,6 +19,8 @@
     "db:migrate": "node scripts/setup-db.js --no-seed",
     "db:deploy:postgres": "prisma migrate deploy --schema prisma/postgres/schema.prisma",
     "db:bootstrap:g-cafe": "node scripts/bootstrap-g-cafe.js",
+    "build:render": "npm run env:check:production && npm run db:generate:postgres && npm run build",
+    "start:render": "npm run db:generate:postgres && npm run db:deploy:postgres && npm run db:bootstrap:g-cafe && npm run start:next",
     "db:reset": "ORDERKO_ALLOW_DB_RESET=local-dev-only node scripts/setup-db.js --reset",
     "db:seed": "node prisma/seed.js",
     "db:studio": "prisma studio",

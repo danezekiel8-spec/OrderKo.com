@@ -6,8 +6,8 @@ services:
     region: singapore
     branch: main
     autoDeploy: true
-    buildCommand: npm ci && npm run env:check:production && npm run db:generate:postgres && npm run build
-    startCommand: npm run db:deploy:postgres && npm run db:bootstrap:g-cafe && npm run start
+    buildCommand: npm ci && npm run build:render
+    startCommand: npm run start:render
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV

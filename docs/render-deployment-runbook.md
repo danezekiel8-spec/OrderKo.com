@@ -43,13 +43,13 @@ npm run env:check
 Render Blueprint build command:
 
 ```bash
-npm ci && npm run env:check:production && npm run db:generate:postgres && npm run build
+npm ci && npm run build:render
 ```
 
 Start command:
 
 ```bash
-npm run db:deploy:postgres && npm run db:bootstrap:g-cafe && npm run start
+npm run start:render
 ```
 
 The start command runs Prisma `migrate deploy` and the non-destructive G-Cafe bootstrap against the Postgres schema before serving traffic. Do not run `db:reset`, `db:seed`, or `test:smoke` against production.
