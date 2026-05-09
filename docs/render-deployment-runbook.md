@@ -49,14 +49,14 @@ npm ci && npm run env:check:production && npm run db:generate:postgres && npm ru
 Start command:
 
 ```bash
-npm run db:deploy:postgres && npm run start
+npm run db:deploy:postgres && npm run db:bootstrap:g-cafe && npm run start
 ```
 
-The start command runs Prisma `migrate deploy` against the Postgres schema before serving traffic. Do not run `db:reset`, `db:seed`, or `test:smoke` against production.
+The start command runs Prisma `migrate deploy` and the non-destructive G-Cafe bootstrap against the Postgres schema before serving traffic. Do not run `db:reset`, `db:seed`, or `test:smoke` against production.
 
 ## First Restaurant Bootstrap
 
-After the first successful deploy, initialize the G-Cafe restaurant/menu once from a Render shell:
+The Render start command runs this automatically. If you need to repair or re-run it manually from a Render shell:
 
 ```bash
 npm run db:bootstrap:g-cafe
