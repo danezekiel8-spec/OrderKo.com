@@ -5,6 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "OrderKo.com",
     short_name: "OrderKo",
     description: "Lightweight QR ordering for small restaurants and cafes.",
+    id: "/orderko-customer",
     start_url: "/r/g-cafe",
     scope: "/",
     display: "standalone",
