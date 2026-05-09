@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/money";
 import { canTransition, minutesSince, statusLabels } from "@/lib/order-state";
 import type { StaffOrderDto } from "@/types/orderko";
 import { LogoutButton } from "@/components/logout-button";
+import { StaffInstallButton } from "@/components/staff-install-button";
 
 type Mode = "cashier" | "kitchen";
 
@@ -112,6 +113,7 @@ export function StaffOrders({ mode }: { mode: Mode }) {
             </div>
           </div>
           <div className="flex gap-2">
+            <StaffInstallButton />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}

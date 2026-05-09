@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui";
+import { StaffInstallButton } from "@/components/staff-install-button";
 
 type StaffRole = "cashier" | "kitchen" | "admin";
 
@@ -47,7 +48,10 @@ export function StaffLogin() {
     <main className="grid min-h-screen place-items-center bg-[#f6f8f5] px-4">
       <section className="w-full max-w-md rounded-lg border border-[#dbe4df] bg-white p-6 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">OrderKo.com</p>
-        <h1 className="mt-3 text-3xl font-semibold text-slate-950">Staff sign in</h1>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <h1 className="text-3xl font-semibold text-slate-950">Staff sign in</h1>
+          <StaffInstallButton className="sm:shrink-0" />
+        </div>
         <div className="mt-6 grid gap-2">
           {roles.map((item) => (
             <button
