@@ -10,7 +10,10 @@ export type StaffRole = "cashier" | "kitchen" | "admin";
 export const staffCookieName = "orderko_staff_session";
 
 function envOrDevDefault(name: string, fallback: string) {
-  const value = process.env[name]?.trim().replace(/^['"]|['"]$/g, "");
+  const rawValue = process.env[name]?.trim().replace(/^['"]|['"]$/g, "");
+  const value = rawValue?.startsWith(`${name}=`)
+    ? rawValue.slice(name.length + 1).trim().replace(/^['"]|['"]$/g, "")
+    : rawValue;
   if (value) return value;
   if (process.env.NODE_ENV === "production") {
     throw new Error(`${name} must be configured in production.`);
@@ -71,6 +74,13 @@ export function verifyStaffSessionToken(token?: string | null) {
 
 export function isPinValid(role: StaffRole, pin: string) {
   return rolePins[role] === pin.trim();
+}
+
+export function staffPinStatus(role: StaffRole) {
+  return {
+    configured: Boolean(rolePins[role]),
+    length: rolePins[role]?.length ?? 0,
+  };
 }
 
 export async function getStaffRole() {

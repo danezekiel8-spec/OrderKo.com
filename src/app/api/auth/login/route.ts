@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createStaffSession, isPinValid, staffCookieName, type StaffRole } from "@/lib/auth";
+import { createStaffSession, isPinValid, staffCookieName, staffPinStatus, type StaffRole } from "@/lib/auth";
 
 const roles = ["cashier", "kitchen", "admin"];
 const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -29,6 +29,15 @@ export async function POST(request: NextRequest) {
 
   const key = `${requestKey(request)}:${body?.role ?? "unknown"}`;
   if (!body?.role || !roles.includes(body.role) || !body.pin || !isPinValid(body.role, body.pin)) {
+    if (body?.role && roles.includes(body.role)) {
+      const status = staffPinStatus(body.role);
+      console.warn("Staff login failed", {
+        role: body.role,
+        suppliedPinLength: body.pin?.trim().length ?? 0,
+        configuredPinLength: status.length,
+        pinConfigured: status.configured,
+      });
+    }
     if (recordFailedAttempt(key)) {
       return NextResponse.json({ error: "Too many sign-in attempts. Try again in a few minutes." }, { status: 429 });
     }

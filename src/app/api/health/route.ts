@@ -9,6 +9,16 @@ export async function GET() {
     return NextResponse.json({ ok: true, database: "ok" });
   } catch (error) {
     console.error("Health check failed", error);
-    return NextResponse.json({ ok: false, database: "error" }, { status: 503 });
+    return NextResponse.json(
+      {
+        ok: false,
+        database: "error",
+        errorCode:
+          typeof error === "object" && error && "code" in error && typeof error.code === "string"
+            ? error.code
+            : "UNKNOWN",
+      },
+      { status: 503 },
+    );
   }
 }
