@@ -131,101 +131,137 @@ export function OrderStatusClient({
     [order.events],
   );
   const connectionCopy = {
-    live: "Live",
+    live: "Live updates",
     retrying: "Reconnecting",
     offline: "Offline",
-    done: "Complete",
+    done: "Finished",
   }[connection];
   const connectionTone = connection === "live" || connection === "done" ? "good" : connection === "offline" ? "danger" : "warn";
   const currentStatusCopy =
     order.status === "AWAITING_PAYMENT"
-      ? "Please pay at the counter so the kitchen can start your order."
+      ? "Show this order number at the counter and pay so the kitchen can start."
       : order.status === "PAYMENT_CONFIRMED"
-        ? "Payment is confirmed. Your order is in the kitchen queue."
+        ? "Payment is confirmed. Your order is now waiting in the kitchen queue."
         : order.status === "PREPARING"
-          ? "The kitchen is preparing your order. Estimated wait is usually 10-15 minutes."
+          ? "The kitchen is preparing your order. Stay nearby and keep this page open."
           : order.status === "ALMOST_READY"
-            ? "Your order is almost ready. Please stay nearby."
+            ? "Your order is almost ready. Please stay near the pickup counter."
             : order.status === "READY_FOR_PICKUP"
-              ? "Your order is ready. Please collect it at the counter."
+              ? "Your order is ready for pickup. Please collect it at the counter."
               : order.status === "COMPLETED"
                 ? "This order is complete. Thanks for ordering."
                 : "This order was canceled. Please speak with staff if this looks wrong.";
+  const readyForPickup = order.status === "READY_FOR_PICKUP";
+  const canceled = order.status === "CANCELED";
 
   return (
-    <main className="min-h-screen bg-[#f6f8f5] px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[calc(1.5rem+env(safe-area-inset-top))] text-[#16211f]">
-      <section className="mx-auto max-w-2xl">
-        <div className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">
-                OrderKo.com
-              </p>
-              <h1 className="mt-2 text-4xl font-semibold">#{order.orderNumber}</h1>
-              <p className="mt-1 break-words text-sm text-slate-500">{order.restaurant.name} · {order.orderCode}</p>
+    <main className="min-h-screen bg-[#f7f4ed] px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] text-[#182522]">
+      <section className="mx-auto max-w-2xl space-y-4">
+        <div className={`overflow-hidden rounded-[1.35rem] border shadow-[0_22px_70px_rgba(28,39,35,0.12)] ${
+          readyForPickup ? "border-teal-200 bg-teal-700 text-white" : canceled ? "border-rose-200 bg-white" : "border-[#e0ddd4] bg-white"
+        }`}>
+          <div className="p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className={`text-xs font-bold uppercase tracking-[0.16em] ${readyForPickup ? "text-teal-100" : "text-teal-700"}`}>
+                  OrderKo.com
+                </p>
+                <h1 className="mt-3 text-5xl font-semibold leading-none">#{order.orderNumber}</h1>
+                <p className={`mt-3 break-words text-sm leading-6 ${readyForPickup ? "text-teal-50" : "text-[#65756f]"}`}>
+                  {order.restaurant.name} · {order.orderCode}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 sm:flex-col sm:items-end">
+                <Badge tone={connectionTone}>{connectionCopy}</Badge>
+                {lastRefresh ? (
+                  <p className={`text-xs ${readyForPickup ? "text-teal-50" : "text-[#65756f]"}`}>Updated {formatClock(lastRefresh)}</p>
+                ) : null}
+              </div>
             </div>
-            <div className="flex items-center gap-2 sm:flex-col sm:items-end">
-              <Badge tone={connectionTone}>{connectionCopy}</Badge>
-              {lastRefresh ? <p className="text-xs text-slate-500">Updated {formatClock(lastRefresh)}</p> : null}
+
+            <div className={`mt-6 rounded-2xl p-4 ${readyForPickup ? "bg-white text-[#182522]" : "bg-[#eef8f5]"}`}>
+              <p className="text-sm font-semibold text-teal-900">Current status</p>
+              <p className="mt-1 text-2xl font-semibold text-teal-950">{statusLabels[order.status]}</p>
+              <p className="mt-2 text-sm leading-6 text-teal-900">{currentStatusCopy}</p>
+              {connection === "retrying" || connection === "offline" ? (
+                <p className="mt-3 rounded-xl bg-white/80 p-3 text-sm leading-6 text-teal-950">
+                  Updates are paused while the connection recovers. Keep this page open; it will retry automatically.
+                </p>
+              ) : null}
             </div>
           </div>
+        </div>
 
-          <div className="mt-6 rounded-lg bg-[#eef8f5] p-4">
-            <p className="text-sm font-semibold text-teal-900">Current status</p>
-            <p className="mt-1 text-2xl font-semibold text-teal-950">{statusLabels[order.status]}</p>
-            <p className="mt-2 text-sm leading-6 text-teal-900">{currentStatusCopy}</p>
-            {connection === "retrying" || connection === "offline" ? (
-              <p className="mt-3 rounded-md bg-white/75 p-3 text-sm leading-6 text-teal-950">
-                Updates are paused while the connection recovers. Keep this page open; it will retry automatically.
-              </p>
-            ) : null}
-          </div>
-
-          {order.status !== "CANCELED" ? (
-            <ol className="mt-6 space-y-3">
+        {order.status !== "CANCELED" ? (
+          <div className="rounded-[1.35rem] border border-[#e0ddd4] bg-white p-5 shadow-[0_14px_42px_rgba(28,39,35,0.08)]">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Order progress</h2>
+              <span className="text-sm text-[#65756f]">Oldest updates first</span>
+            </div>
+            <ol className="mt-5 space-y-1">
               {customerStatuses.map((status, index) => {
                 const event = eventByStatus.get(status);
+                const done = index <= activeIndex;
+                const current = index === activeIndex;
                 return (
-                  <li key={status} className="flex items-center gap-3">
-                    <span
-                      className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-semibold ${
-                        index <= activeIndex ? "bg-teal-700 text-white" : "bg-slate-100 text-slate-400"
-                      }`}
-                    >
-                      {index + 1}
-                    </span>
-                    <span className={index <= activeIndex ? "font-semibold text-slate-900" : "text-slate-500"}>
-                      {statusLabels[status]}
-                      {event ? <span className="ml-2 text-xs font-normal text-slate-500">{formatClock(event.createdAt)}</span> : null}
-                    </span>
+                  <li key={status} className="grid grid-cols-[2rem_1fr] gap-3">
+                    <div className="flex flex-col items-center">
+                      <span
+                        className={`grid size-8 place-items-center rounded-full text-sm font-semibold ${
+                          done ? "bg-teal-700 text-white" : "bg-[#f0ede6] text-[#8a948f]"
+                        }`}
+                      >
+                        {index + 1}
+                      </span>
+                      {index < customerStatuses.length - 1 ? (
+                        <span className={`h-8 w-px ${index < activeIndex ? "bg-teal-600" : "bg-[#e2ded4]"}`} />
+                      ) : null}
+                    </div>
+                    <div className="pb-4">
+                      <p className={`font-semibold ${done ? "text-[#182522]" : "text-[#8a948f]"}`}>{statusLabels[status]}</p>
+                      <p className="mt-1 text-sm leading-5 text-[#65756f]">
+                        {event ? formatClock(event.createdAt) : current ? "In progress now" : "Waiting"}
+                      </p>
+                    </div>
                   </li>
                 );
               })}
             </ol>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
-        <div className="mt-4 rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold">Order details</h2>
+        <div className="rounded-[1.35rem] border border-[#e0ddd4] bg-white p-5 shadow-[0_14px_42px_rgba(28,39,35,0.08)]">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Order details</h2>
+              <p className="mt-1 text-sm leading-5 text-[#65756f]">Use this summary if staff needs to confirm the order.</p>
+            </div>
+            <span className="rounded-full bg-[#eef8f5] px-3 py-1 text-xs font-semibold text-teal-800">{order.paymentStatus.replace("_", " ")}</span>
+          </div>
           <div className="mt-4 space-y-3">
             {order.items.map((item) => (
-              <div key={item.id} className="flex justify-between gap-4 border-b border-slate-100 pb-3">
-                <div>
-                  <p className="font-semibold">{item.quantity}× {item.name}</p>
-                  {item.selectedOptions.length ? (
-                    <p className="mt-1 text-sm text-slate-500">
-                      {item.selectedOptions.map((option) => option.optionName).join(", ")}
-                    </p>
-                  ) : null}
-                  {item.note ? <p className="mt-1 text-sm text-slate-500">Note: {item.note}</p> : null}
+              <div key={item.id} className="rounded-2xl border border-[#eee9df] bg-[#fbfaf7] p-3">
+                <div className="flex justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{item.quantity}x {item.name}</p>
+                    {item.selectedOptions.length ? (
+                      <p className="mt-1 text-sm leading-5 text-[#65756f]">
+                        {item.selectedOptions.map((option) => option.optionName).join(", ")}
+                      </p>
+                    ) : null}
+                    {item.note ? <p className="mt-1 text-sm leading-5 text-[#65756f]">Note: {item.note}</p> : null}
+                  </div>
+                  <p className="shrink-0 font-semibold">{formatMoney(item.lineTotalCents, order.restaurant.currency)}</p>
                 </div>
-                <p className="font-semibold">{formatMoney(item.lineTotalCents, order.restaurant.currency)}</p>
               </div>
             ))}
           </div>
-          <div className="mt-4 flex justify-between text-lg font-semibold">
-            <span>Total</span>
-            <span>{formatMoney(order.totalCents, order.restaurant.currency)}</span>
+          <div className="mt-4 rounded-2xl bg-[#13201d] p-4 text-white">
+            <div className="flex justify-between gap-3 text-lg font-semibold">
+              <span>Total</span>
+              <span>{formatMoney(order.totalCents, order.restaurant.currency)}</span>
+            </div>
+            <p className="mt-2 text-sm leading-5 text-[#bdd9d2]">Payment is handled at the counter for this pilot.</p>
           </div>
         </div>
       </section>
