@@ -10,7 +10,7 @@ export type StaffRole = "cashier" | "kitchen" | "admin";
 export const staffCookieName = "orderko_staff_session";
 
 function envOrDevDefault(name: string, fallback: string) {
-  const value = process.env[name]?.trim();
+  const value = process.env[name]?.trim().replace(/^['"]|['"]$/g, "");
   if (value) return value;
   if (process.env.NODE_ENV === "production") {
     throw new Error(`${name} must be configured in production.`);
