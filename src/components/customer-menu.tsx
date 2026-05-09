@@ -237,17 +237,17 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f4ed] pb-[calc(8.75rem+env(safe-area-inset-bottom))] text-[#182522] lg:pb-10">
-      <header className="sticky top-0 z-20 border-b border-[#e0ddd4] bg-[#f7f4ed]/92 px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur-xl">
+    <main className="min-h-screen bg-[#f7f4ed] pb-[calc(7.25rem+env(safe-area-inset-bottom))] text-[#182522] lg:pb-10">
+      <header className="sticky top-0 z-20 border-b border-[#e0ddd4] bg-[#f7f4ed]/94 px-3 pt-[calc(0.55rem+env(safe-area-inset-top))] backdrop-blur-xl sm:px-4 sm:pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="mx-auto max-w-6xl">
-          <div className="flex items-center justify-between gap-3 pb-3">
+          <div className="flex items-center justify-between gap-3 pb-2 sm:pb-3">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">OrderKo.com</p>
             <Badge tone={menuData.restaurant.isOpen ? "good" : "danger"}>
               {menuData.restaurant.isOpen ? "Open now" : "Closed"}
             </Badge>
           </div>
-          <div className="relative -mx-4">
-            <div className="flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="relative -mx-3 sm:-mx-4">
+            <div className="flex gap-2 overflow-x-auto px-3 pb-2 [scrollbar-width:none] sm:px-4 sm:pb-3 [&::-webkit-scrollbar]:hidden">
               {menuData.categories.map((category) => (
                 <button
                   key={category.id}
@@ -255,7 +255,7 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
                     setActiveCategory(category.id);
                     document.getElementById(category.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
-                  className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold shadow-sm transition active:scale-[0.98] ${
+                  className={`min-h-10 shrink-0 rounded-full px-3 text-sm font-semibold shadow-sm transition active:scale-[0.98] sm:min-h-11 sm:px-4 ${
                     activeCategory === category.id
                       ? "bg-[#17211f] text-white"
                       : "border border-[#e3dfd5] bg-white/85 text-[#485953]"
@@ -271,18 +271,18 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-6 px-4 py-4 lg:grid-cols-[1fr_372px] lg:py-6">
-        <div className="min-w-0 space-y-7">
-          <section className="overflow-hidden rounded-[1.35rem] border border-[#e0ddd4] bg-[#13201d] text-white shadow-[0_22px_70px_rgba(19,32,29,0.18)]">
-            <div className="p-5 sm:p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <section className="mx-auto grid max-w-6xl gap-5 px-3 py-3 sm:px-4 sm:py-4 lg:grid-cols-[1fr_372px] lg:gap-6 lg:py-6">
+        <div className="min-w-0 space-y-5 sm:space-y-7">
+          <section className="overflow-hidden rounded-2xl border border-[#e0ddd4] bg-[#13201d] text-white shadow-[0_16px_42px_rgba(19,32,29,0.14)] sm:rounded-[1.35rem] sm:shadow-[0_22px_70px_rgba(19,32,29,0.18)]">
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-200">Scan, order, pay at counter</p>
-                  <h1 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">{menuData.restaurant.name}</h1>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-[#d7e4de]">{menuData.restaurant.description}</p>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-[#aebdb7]">{menuData.restaurant.address}</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-200">Scan, order, pay</p>
+                  <h1 className="mt-2 text-2xl font-semibold leading-tight sm:mt-3 sm:text-4xl">{menuData.restaurant.name}</h1>
+                  <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-5 text-[#d7e4de] sm:mt-3 sm:line-clamp-none sm:leading-6">{menuData.restaurant.description}</p>
+                  <p className="mt-2 line-clamp-1 max-w-2xl text-xs leading-5 text-[#aebdb7] sm:mt-3 sm:text-sm sm:leading-6">{menuData.restaurant.address}</p>
                 </div>
-                <div className="grid min-w-28 rounded-2xl border border-white/12 bg-white/10 p-3 text-center">
+                <div className="hidden min-w-28 rounded-2xl border border-white/12 bg-white/10 p-3 text-center sm:grid">
                   <span className="text-xs font-semibold uppercase text-[#bdd9d2]">Cart</span>
                   <span className="mt-1 text-2xl font-semibold">{count}</span>
                   <span className="text-xs text-[#bdd9d2]">items</span>
@@ -293,10 +293,10 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
                   {menuData.restaurant.name} is currently closed for ordering. You can still browse the menu.
                 </p>
               ) : (
-                <div className="mt-5 grid gap-2 text-sm sm:grid-cols-3">
-                  <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">No app download needed</div>
-                  <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">Get an order number</div>
-                  <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">Pay at the counter</div>
+                <div className="mt-5 hidden gap-2 text-sm sm:grid sm:grid-cols-3">
+                  <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">No app needed</div>
+                  <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">Order number</div>
+                  <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">Pay at counter</div>
                 </div>
               )}
             </div>
@@ -304,33 +304,33 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
 
           {menuData.categories.length ? (
             menuData.categories.map((category) => (
-              <section key={category.id} id={category.id} className="scroll-mt-32">
-                <div className="mb-3 flex items-end justify-between gap-3">
+              <section key={category.id} id={category.id} className="scroll-mt-28 sm:scroll-mt-32">
+                <div className="mb-2 flex items-end justify-between gap-3 sm:mb-3">
                   <div>
-                    <h2 className="text-xl font-semibold leading-tight">{category.name}</h2>
-                    <p className="mt-1 text-sm text-[#66756f]">{category.items.length} menu items</p>
+                    <h2 className="text-lg font-semibold leading-tight sm:text-xl">{category.name}</h2>
+                    <p className="mt-0.5 text-xs text-[#66756f] sm:mt-1 sm:text-sm">{category.items.length} menu items</p>
                   </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
                   {category.items.map((item) => (
                     <button
                       key={item.id}
                       disabled={item.isSoldOut || !menuData.restaurant.isOpen}
                       aria-disabled={item.isSoldOut || !menuData.restaurant.isOpen}
                       onClick={() => setSelectedItem(item)}
-                      className="group min-h-36 overflow-hidden rounded-2xl border border-[#e2ded4] bg-white p-3 text-left shadow-[0_10px_30px_rgba(28,39,35,0.06)] transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-[0_16px_38px_rgba(28,39,35,0.1)] active:scale-[0.99] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
+                      className="group min-h-28 overflow-hidden rounded-xl border border-[#e2ded4] bg-white p-2.5 text-left shadow-[0_8px_22px_rgba(28,39,35,0.05)] transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-[0_16px_38px_rgba(28,39,35,0.1)] active:scale-[0.99] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-36 sm:rounded-2xl sm:p-3 sm:shadow-[0_10px_30px_rgba(28,39,35,0.06)]"
                     >
-                      <div className="flex h-full gap-3">
-                        <MenuImage src={item.imageUrl} className="h-28 w-28 shrink-0 rounded-xl sm:h-32 sm:w-32" loading="lazy" />
+                      <div className="flex h-full gap-2.5 sm:gap-3">
+                        <MenuImage src={item.imageUrl} className="h-24 w-24 shrink-0 rounded-lg sm:h-32 sm:w-32 sm:rounded-xl" loading="lazy" />
                         <div className="flex min-w-0 flex-1 flex-col">
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="min-w-0 text-base font-semibold leading-snug text-[#182522]">{item.name}</h3>
                             {item.isSoldOut ? <Badge tone="danger">Sold out</Badge> : null}
                           </div>
-                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#65756f]">{item.description}</p>
-                          <div className="mt-auto flex items-center justify-between gap-3 pt-3">
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#65756f] sm:mt-2 sm:text-sm sm:leading-6">{item.description}</p>
+                          <div className="mt-auto flex items-center justify-between gap-3 pt-2 sm:pt-3">
                             <p className="font-semibold text-teal-800">{formatMoney(item.priceCents, menuData.restaurant.currency)}</p>
-                            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#17211f] text-lg font-semibold text-white transition group-hover:bg-teal-700">
+                            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#17211f] text-lg font-semibold text-white transition group-hover:bg-teal-700 sm:size-10">
                               +
                             </span>
                           </div>
@@ -377,14 +377,14 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
         </aside>
       </section>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#ded8cc] bg-white/96 px-4 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-14px_36px_rgba(20,31,28,0.12)] backdrop-blur-xl lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#ded8cc] bg-white/96 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_28px_rgba(20,31,28,0.1)] backdrop-blur-xl sm:px-4 sm:pb-[calc(0.9rem+env(safe-area-inset-bottom))] sm:pt-3 lg:hidden">
         <div className="mx-auto max-w-md">
-          <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="mb-2 flex items-center justify-between gap-3 sm:mb-3">
             <div>
               <p className="text-xs font-semibold uppercase text-[#65756f]">{cartLoaded ? cartCountLabel(count) : "Loading cart"}</p>
-              <p className="text-sm text-[#65756f]">Review before paying at counter</p>
+              <p className="hidden text-sm text-[#65756f] min-[420px]:block">Review before paying at counter</p>
             </div>
-            <span className="text-xl font-semibold">{formatMoney(totalCents, menuData.restaurant.currency)}</span>
+            <span className="text-lg font-semibold sm:text-xl">{formatMoney(totalCents, menuData.restaurant.currency)}</span>
           </div>
           <Button className="w-full rounded-xl" disabled={!cart.length || !cartLoaded} onClick={() => setMobileCartOpen(true)}>
             {cart.length ? "Review order" : "Cart is empty"}
@@ -402,11 +402,11 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
             if (event.target === event.currentTarget) setMobileCartOpen(false);
           }}
         >
-          <div className="flex max-h-[92dvh] w-full animate-[sheetIn_180ms_ease-out] flex-col rounded-t-[1.4rem] bg-[#f7f4ed] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[#e1dbcf] px-4 py-3">
+          <div className="flex max-h-[90dvh] w-full animate-[sheetIn_180ms_ease-out] flex-col rounded-t-[1.25rem] bg-[#f7f4ed] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#e1dbcf] px-3 py-2.5 sm:px-4 sm:py-3">
               <div>
-                <h2 className="text-lg font-semibold">Review order</h2>
-                <p className="text-sm text-[#65756f]">Pay at the counter after placing it.</p>
+                <h2 className="text-base font-semibold sm:text-lg">Review order</h2>
+                <p className="text-xs text-[#65756f] sm:text-sm">Pay at the counter after placing it.</p>
               </div>
               <button
                 className="grid size-11 place-items-center rounded-full bg-white text-xl shadow-sm"
@@ -417,7 +417,7 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
                 x
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-4">
               <CartPanel
                 cart={cart}
                 currency={menuData.restaurant.currency}
@@ -492,21 +492,21 @@ function CartPanel({
   const hasUnavailableItems = unavailableItemIds.length > 0;
 
   return (
-    <div className="rounded-2xl border border-[#e0ddd4] bg-white p-4 shadow-[0_14px_42px_rgba(28,39,35,0.08)]">
+    <div className="rounded-xl border border-[#e0ddd4] bg-white p-3 shadow-[0_10px_28px_rgba(28,39,35,0.07)] sm:rounded-2xl sm:p-4 sm:shadow-[0_14px_42px_rgba(28,39,35,0.08)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Your order</h2>
-          <p className="mt-1 text-sm leading-5 text-[#65756f]">{cart.length ? cartCountLabel(count) : "Start by adding menu items."}</p>
+          <h2 className="text-base font-semibold sm:text-lg">Your order</h2>
+          <p className="mt-0.5 text-xs leading-5 text-[#65756f] sm:mt-1 sm:text-sm">{cart.length ? cartCountLabel(count) : "Start by adding menu items."}</p>
         </div>
         <span className="rounded-full bg-[#eef8f5] px-3 py-1 text-xs font-semibold text-teal-800">Counter pay</span>
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
         {cart.length ? (
           cart.map((item) => {
             const isUnavailable = unavailableItemSet.has(item.menuItemId);
             return (
-              <div key={item.key} className="rounded-2xl border border-[#eee9df] bg-[#fbfaf7] p-3">
+              <div key={item.key} className="rounded-xl border border-[#eee9df] bg-[#fbfaf7] p-2.5 sm:rounded-2xl sm:p-3">
                 <div className="flex justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -525,7 +525,7 @@ function CartPanel({
                   </div>
                   <p className="shrink-0 font-semibold">{formatMoney(item.unitPriceCents * item.quantity, currency)}</p>
                 </div>
-                <div className="mt-3 flex items-center gap-2">
+                <div className="mt-2.5 flex items-center gap-2 sm:mt-3">
                   <Button
                     className="rounded-full px-3"
                     variant="secondary"
@@ -552,28 +552,28 @@ function CartPanel({
             );
           })
         ) : (
-          <div className="rounded-2xl bg-[#fbfaf7] p-4 text-sm leading-6 text-[#65756f]">
+          <div className="rounded-xl bg-[#fbfaf7] p-3 text-sm leading-6 text-[#65756f] sm:rounded-2xl sm:p-4">
             Add items to build your order. Your cart is saved on this phone if the page refreshes.
           </div>
         )}
       </div>
 
-      <label className="mt-4 block text-sm font-semibold">
+      <label className="mt-3 block text-sm font-semibold sm:mt-4">
         Name for pickup
         <input
           value={customerName}
           onChange={(event) => onNameChange(event.target.value)}
-          className="mt-2 min-h-12 w-full rounded-xl border border-[#d9d4ca] bg-white px-3 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+          className="mt-2 min-h-11 w-full rounded-xl border border-[#d9d4ca] bg-white px-3 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100 sm:min-h-12"
           placeholder="Optional"
           maxLength={80}
         />
       </label>
-      <label className="mt-4 block text-sm font-semibold">
+      <label className="mt-3 block text-sm font-semibold sm:mt-4">
         Order note
         <textarea
           value={customerNote}
           onChange={(event) => onNoteChange(event.target.value)}
-          className="mt-2 min-h-24 w-full rounded-xl border border-[#d9d4ca] bg-white px-3 py-2 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+          className="mt-2 min-h-20 w-full rounded-xl border border-[#d9d4ca] bg-white px-3 py-2 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100 sm:min-h-24"
           placeholder="Optional note for cashier or kitchen"
           maxLength={240}
         />
@@ -591,12 +591,12 @@ function CartPanel({
         </p>
       ) : null}
 
-      <div className="mt-4 rounded-2xl bg-[#13201d] p-4 text-white">
+      <div className="mt-3 rounded-xl bg-[#13201d] p-3 text-white sm:mt-4 sm:rounded-2xl sm:p-4">
         <div className="flex items-center justify-between gap-3">
           <span className="font-semibold">Total</span>
-          <span className="text-2xl font-semibold">{formatMoney(totalCents, currency)}</span>
+          <span className="text-xl font-semibold sm:text-2xl">{formatMoney(totalCents, currency)}</span>
         </div>
-        <p className="mt-2 text-sm leading-5 text-[#bdd9d2]">Payment is made at the counter. The kitchen starts after cashier confirms payment.</p>
+        <p className="mt-1.5 text-xs leading-5 text-[#bdd9d2] sm:mt-2 sm:text-sm">Payment is made at the counter. The kitchen starts after cashier confirms payment.</p>
       </div>
       <Button className="mt-4 w-full rounded-xl" disabled={!cart.length || isPending || hasUnavailableItems || !restaurantOpen} onClick={onPlaceOrder}>
         {isPending ? "Placing order..." : "Place order"}
@@ -687,9 +687,9 @@ function ItemModal({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="mx-auto flex max-h-[94dvh] w-full max-w-xl animate-[sheetIn_180ms_ease-out] flex-col overflow-hidden rounded-t-[1.45rem] bg-white shadow-2xl sm:rounded-2xl">
+      <div className="mx-auto flex max-h-[92dvh] w-full max-w-xl animate-[sheetIn_180ms_ease-out] flex-col overflow-hidden rounded-t-[1.25rem] bg-white shadow-2xl sm:max-h-[94dvh] sm:rounded-2xl">
         <div className="relative">
-          <MenuImage src={item.imageUrl} className="h-52 w-full sm:h-56" loading="eager" />
+          <MenuImage src={item.imageUrl} className="h-40 w-full sm:h-56" loading="eager" />
           <button
             className="absolute right-3 top-3 grid size-11 place-items-center rounded-full bg-white/95 text-xl shadow-sm"
             onClick={onClose}
@@ -698,12 +698,12 @@ function ItemModal({
             x
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          <div className="flex items-start justify-between gap-4">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-teal-700">Menu item</p>
-              <h2 className="mt-2 text-2xl font-semibold leading-tight">{item.name}</h2>
-              <p className="mt-2 leading-7 text-[#65756f]">{item.description}</p>
+              <h2 className="mt-1.5 text-xl font-semibold leading-tight sm:mt-2 sm:text-2xl">{item.name}</h2>
+              <p className="mt-1.5 text-sm leading-6 text-[#65756f] sm:mt-2 sm:text-base sm:leading-7">{item.description}</p>
             </div>
             <span className="shrink-0 rounded-full bg-[#eef8f5] px-3 py-1 text-sm font-semibold text-teal-800">
               {formatMoney(item.priceCents, currency)}
@@ -711,7 +711,7 @@ function ItemModal({
           </div>
 
           {item.optionGroups.length ? (
-            <div className="mt-5 space-y-5">
+            <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
               {item.optionGroups.map((group) => (
                 <section key={group.name}>
                   <div className="flex items-center justify-between gap-3">
@@ -725,7 +725,7 @@ function ItemModal({
                         <button
                           key={option.name}
                           onClick={() => toggleOption(group.name, option.name, option.priceCents, group.maxChoices)}
-                          className={`flex min-h-13 items-center justify-between rounded-xl border px-4 text-left transition active:scale-[0.99] ${
+                          className={`flex min-h-12 items-center justify-between rounded-xl border px-3 text-left transition active:scale-[0.99] sm:min-h-13 sm:px-4 ${
                             checked ? "border-teal-600 bg-teal-50" : "border-[#e2ded4] bg-white"
                           }`}
                         >
@@ -740,19 +740,19 @@ function ItemModal({
             </div>
           ) : null}
 
-          <label className="mt-5 block text-sm font-semibold">
+          <label className="mt-4 block text-sm font-semibold sm:mt-5">
             Item note
             <textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              className="mt-2 min-h-24 w-full rounded-xl border border-[#d9d4ca] px-3 py-2 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+              className="mt-2 min-h-20 w-full rounded-xl border border-[#d9d4ca] px-3 py-2 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100 sm:min-h-24"
               placeholder="Example: less ice, sauce on side"
               maxLength={160}
             />
           </label>
         </div>
-        <div className="border-t border-[#e2ded4] bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="border-t border-[#e2ded4] bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="mb-3 flex items-center justify-between sm:mb-4">
             <div className="flex items-center gap-2">
               <Button className="rounded-full px-3" variant="secondary" aria-label="Decrease quantity" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
                 -
