@@ -46,12 +46,20 @@ export async function POST(request: NextRequest) {
 
   attempts.delete(key);
   const response = NextResponse.json({ ok: true, role: body.role });
-  response.cookies.set(staffCookieName, createStaffSession(body.role), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 12,
-  });
+  try {
+    response.cookies.set(staffCookieName, createStaffSession(body.role), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 12,
+    });
+  } catch (error) {
+    console.error("Staff session creation failed", error);
+    return NextResponse.json(
+      { error: "Staff session is not configured. Add STAFF_SESSION_SECRET and redeploy." },
+      { status: 500 },
+    );
+  }
   return response;
 }
