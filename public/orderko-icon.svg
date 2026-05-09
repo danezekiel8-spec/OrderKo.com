@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="OrderKo">
+  <rect width="512" height="512" rx="112" fill="#0f766e"/>
+  <path fill="#f8faf9" d="M138 130h236a32 32 0 0 1 32 32v188a32 32 0 0 1-32 32H138a32 32 0 0 1-32-32V162a32 32 0 0 1 32-32Zm18 62v42h42v-42h-42Zm0 86v42h42v-42h-42Zm82-86v42h118v-42H238Zm0 86v42h82v-42h-82Z"/>
+  <path fill="#99f6e4" d="M342 318a28 28 0 1 0 56 0 28 28 0 0 0-56 0Z"/>
+</svg>
