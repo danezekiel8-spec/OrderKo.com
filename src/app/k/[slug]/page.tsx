@@ -4,7 +4,7 @@ import { CustomerMenu } from "@/components/customer-menu";
 
 export const dynamic = "force-dynamic";
 
-export default async function RestaurantMenuPage({
+export default async function KioskMenuPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -14,5 +14,5 @@ export default async function RestaurantMenuPage({
 
   if (!menuData) notFound();
 
-  return <CustomerMenu data={menuData} />;
+  return <CustomerMenu data={menuData} mode="kiosk" />;
 }

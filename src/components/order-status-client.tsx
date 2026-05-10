@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { OrderStatus, PaymentStatus } from "@prisma/client";
 import { customerStatuses, statusLabels } from "@/lib/order-state";
 import { formatMoney } from "@/lib/money";
@@ -48,15 +49,20 @@ function formatClock(value: string | Date) {
 export function OrderStatusClient({
   initialOrder,
   accessToken,
+  mode = "customer",
 }: {
   initialOrder: OrderStatusResponse["order"];
   accessToken: string;
+  mode?: "customer" | "kiosk";
 }) {
+  const router = useRouter();
+  const isKiosk = mode === "kiosk";
   const [order, setOrder] = useState(initialOrder);
   const [connection, setConnection] = useState<"live" | "retrying" | "offline" | "done">(
     isTerminalStatus(initialOrder.status) ? "done" : "live",
   );
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [kioskReturnSeconds, setKioskReturnSeconds] = useState(20);
 
   useEffect(() => {
     let stopped = false;
@@ -124,6 +130,24 @@ export function OrderStatusClient({
     };
   }, [accessToken, initialOrder.orderCode]);
 
+  useEffect(() => {
+    if (!isKiosk || order.status !== "COMPLETED") {
+      return;
+    }
+
+    const countdown = window.setInterval(() => {
+      setKioskReturnSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    const returnTimer = window.setTimeout(() => {
+      router.replace(`/k/${order.restaurant.slug}`);
+    }, 20000);
+
+    return () => {
+      window.clearInterval(countdown);
+      window.clearTimeout(returnTimer);
+    };
+  }, [isKiosk, order.restaurant.slug, order.status, router]);
+
   const activeIndex = customerStatuses.includes(order.status)
     ? customerStatuses.indexOf(order.status)
     : -1;
@@ -155,6 +179,7 @@ export function OrderStatusClient({
   const readyForPickup = order.status === "READY_FOR_PICKUP";
   const canceled = order.status === "CANCELED";
   const completed = order.status === "COMPLETED";
+  const returnHref = isKiosk ? `/k/${order.restaurant.slug}` : `/r/${order.restaurant.slug}`;
 
   return (
     <main className="min-h-screen bg-[#f7f4ed] px-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))] text-[#182522] sm:px-4 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:pt-[calc(1rem+env(safe-area-inset-top))]">
@@ -192,10 +217,10 @@ export function OrderStatusClient({
               ) : null}
               {completed ? (
                 <Link
-                  href={`/r/${order.restaurant.slug}`}
+                  href={returnHref}
                   className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl bg-[#13201d] px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800"
                 >
-                  Close order and return to menu
+                  {isKiosk ? `Start next order${kioskReturnSeconds ? ` (${kioskReturnSeconds})` : ""}` : "Close order and return to menu"}
                 </Link>
               ) : null}
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import type { MenuItemDto, MenuResponse, SelectedOptionDto } from "@/types/orderko";
@@ -17,6 +17,9 @@ type CartItem = {
 };
 
 const cartStoragePrefix = "orderko-cart:";
+const kioskCartStoragePrefix = "orderko-kiosk-cart:";
+const kioskWarningAfterMs = 90000;
+const kioskResetAfterMs = 120000;
 
 function itemKey(itemId: string, selectedOptions: SelectedOptionDto[], note: string) {
   return `${itemId}:${JSON.stringify(selectedOptions)}:${note.trim()}`;
@@ -26,9 +29,10 @@ function cartCountLabel(count: number) {
   return `${count} item${count === 1 ? "" : "s"}`;
 }
 
-export function CustomerMenu({ data }: { data: MenuResponse }) {
+export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; mode?: "customer" | "kiosk" }) {
   const router = useRouter();
-  const cartStorageKey = `${cartStoragePrefix}${data.restaurant.slug}`;
+  const isKiosk = mode === "kiosk";
+  const cartStorageKey = `${isKiosk ? kioskCartStoragePrefix : cartStoragePrefix}${data.restaurant.slug}`;
   const [menuData, setMenuData] = useState(data);
   const [activeCategory, setActiveCategory] = useState(data.categories[0]?.id ?? "");
   const [selectedItem, setSelectedItem] = useState<MenuItemDto | null>(null);
@@ -39,6 +43,8 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
   const [error, setError] = useState("");
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [idleWarningVisible, setIdleWarningVisible] = useState(false);
+  const [idleSecondsRemaining, setIdleSecondsRemaining] = useState(30);
   const [isPending, startTransition] = useTransition();
   const submissionKeyRef = useRef<string | null>(null);
 
@@ -60,6 +66,42 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
   );
   const hasBlockingUnavailableItem = unavailableItemIds.length > 0;
   const orderBusy = isPending || isSubmitting;
+  const hasActiveKioskSession = Boolean(
+    cart.length || customerName.trim() || customerNote.trim() || selectedItem || mobileCartOpen || error,
+  );
+
+  const readSavedCart = useCallback(
+    (key: string) => {
+      const storage = isKiosk ? window.sessionStorage : window.localStorage;
+      return storage.getItem(key);
+    },
+    [isKiosk],
+  );
+
+  const removeSavedCart = useCallback(
+    (key: string) => {
+      const storage = isKiosk ? window.sessionStorage : window.localStorage;
+      storage.removeItem(key);
+    },
+    [isKiosk],
+  );
+
+  const resetSession = useCallback(() => {
+    setCart([]);
+    setCustomerName("");
+    setCustomerNote("");
+    setError("");
+    setSelectedItem(null);
+    setMobileCartOpen(false);
+    setIdleWarningVisible(false);
+    setIdleSecondsRemaining(30);
+    submissionKeyRef.current = null;
+    try {
+      removeSavedCart(cartStorageKey);
+    } catch {
+      // Kiosk reset still works even if browser storage is unavailable.
+    }
+  }, [cartStorageKey, removeSavedCart]);
 
   function normalizeCartItem(savedItem: CartItem) {
     const menuItem = menuItemById.get(savedItem.menuItemId);
@@ -96,7 +138,7 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
     let canceled = false;
     const timer = window.setTimeout(() => {
       try {
-        const saved = window.localStorage.getItem(cartStorageKey);
+        const saved = readSavedCart(cartStorageKey);
         if (saved) {
           const parsed = JSON.parse(saved) as {
             cart?: CartItem[];
@@ -112,7 +154,7 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
           }
         }
       } catch {
-        window.localStorage.removeItem(cartStorageKey);
+        removeSavedCart(cartStorageKey);
       } finally {
         if (!canceled) setCartLoaded(true);
       }
@@ -123,12 +165,13 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
     };
     // Restore once per restaurant slug; later menu refreshes should not overwrite the live cart.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartStorageKey]);
+  }, [cartStorageKey, readSavedCart, removeSavedCart]);
 
   useEffect(() => {
     if (!cartLoaded) return;
     try {
-      window.localStorage.setItem(
+      const storage = isKiosk ? window.sessionStorage : window.localStorage;
+      storage.setItem(
         cartStorageKey,
         JSON.stringify({
           cart,
@@ -140,7 +183,49 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
     } catch {
       // Local storage is a convenience for refresh recovery; ordering still works without it.
     }
-  }, [cart, cartLoaded, cartStorageKey, customerName, customerNote]);
+  }, [cart, cartLoaded, cartStorageKey, customerName, customerNote, isKiosk]);
+
+  useEffect(() => {
+    if (!isKiosk || !hasActiveKioskSession || orderBusy) {
+      return;
+    }
+
+    let countdown: number | undefined;
+    let warningTimer: number | undefined;
+    let resetTimer: number | undefined;
+
+    function clearTimers() {
+      window.clearTimeout(warningTimer);
+      window.clearTimeout(resetTimer);
+      window.clearInterval(countdown);
+    }
+
+    function scheduleReset({ hideWarning = false }: { hideWarning?: boolean } = {}) {
+      clearTimers();
+      if (hideWarning) {
+        setIdleWarningVisible(false);
+        setIdleSecondsRemaining(30);
+      }
+      warningTimer = window.setTimeout(() => {
+        setIdleWarningVisible(true);
+        setIdleSecondsRemaining(30);
+        countdown = window.setInterval(() => {
+          setIdleSecondsRemaining((seconds) => Math.max(0, seconds - 1));
+        }, 1000);
+      }, kioskWarningAfterMs);
+      resetTimer = window.setTimeout(resetSession, kioskResetAfterMs);
+    }
+
+    scheduleReset();
+    const events: (keyof WindowEventMap)[] = ["pointerdown", "keydown", "scroll", "touchstart"];
+    const handleActivity = () => scheduleReset({ hideWarning: true });
+    events.forEach((eventName) => window.addEventListener(eventName, handleActivity, { passive: true }));
+
+    return () => {
+      clearTimers();
+      events.forEach((eventName) => window.removeEventListener(eventName, handleActivity));
+    };
+  }, [hasActiveKioskSession, isKiosk, orderBusy, resetSession]);
 
   useEffect(() => {
     const locked = Boolean(selectedItem || mobileCartOpen);
@@ -225,9 +310,10 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
         setCustomerName("");
         setCustomerNote("");
         submissionKeyRef.current = null;
-        window.localStorage.removeItem(cartStorageKey);
+        removeSavedCart(cartStorageKey);
         const tokenParam = result.order.customerAccessToken ? `?t=${encodeURIComponent(result.order.customerAccessToken)}` : "";
-        router.push(`/order/${result.order.orderCode}${tokenParam}`);
+        const modeParam = isKiosk ? `${tokenParam ? "&" : "?"}mode=kiosk` : "";
+        router.push(`/order/${result.order.orderCode}${tokenParam}${modeParam}`);
       } catch {
         setError("Connection dropped while placing the order. Your cart is still saved. Please retry once, then check with the counter before trying again.");
       } finally {
@@ -237,14 +323,27 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f4ed] pb-[calc(7.25rem+env(safe-area-inset-bottom))] text-[#182522] lg:pb-10">
-      <header className="sticky top-0 z-20 border-b border-[#e0ddd4] bg-[#f7f4ed]/94 px-3 pt-[calc(0.55rem+env(safe-area-inset-top))] backdrop-blur-xl sm:px-4 sm:pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <div className="mx-auto max-w-6xl">
+    <main className={`min-h-screen bg-[#f7f4ed] text-[#182522] ${isKiosk ? "pb-8" : "pb-[calc(7.25rem+env(safe-area-inset-bottom))] lg:pb-10"}`}>
+      <header className={`sticky top-0 z-20 border-b border-[#e0ddd4] bg-[#f7f4ed]/94 backdrop-blur-xl ${isKiosk ? "px-6 py-4" : "px-3 pt-[calc(0.55rem+env(safe-area-inset-top))] sm:px-4 sm:pt-[calc(0.75rem+env(safe-area-inset-top))]"}`}>
+        <div className={isKiosk ? "mx-auto max-w-[1500px]" : "mx-auto max-w-6xl"}>
           <div className="flex items-center justify-between gap-3 pb-2 sm:pb-3">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">OrderKo.com</p>
-            <Badge tone={menuData.restaurant.isOpen ? "good" : "danger"}>
-              {menuData.restaurant.isOpen ? "Open now" : "Closed"}
-            </Badge>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">OrderKo.com</p>
+              {isKiosk ? <p className="mt-1 text-sm font-semibold text-[#65756f]">Kiosk ordering</p> : null}
+            </div>
+            <div className="flex items-center gap-2">
+              {isKiosk && hasActiveKioskSession ? (
+                <button
+                  className="min-h-12 rounded-full border border-[#d9d4ca] bg-white px-5 text-base font-semibold text-[#182522] shadow-sm transition active:scale-[0.98]"
+                  onClick={resetSession}
+                >
+                  Start over
+                </button>
+              ) : null}
+              <Badge tone={menuData.restaurant.isOpen ? "good" : "danger"}>
+                {menuData.restaurant.isOpen ? "Open now" : "Closed"}
+              </Badge>
+            </div>
           </div>
           <div className="relative -mx-3 sm:-mx-4">
             <div className="flex gap-2 overflow-x-auto px-3 pb-2 [scrollbar-width:none] sm:px-4 sm:pb-3 [&::-webkit-scrollbar]:hidden">
@@ -255,7 +354,7 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
                     setActiveCategory(category.id);
                     document.getElementById(category.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
-                  className={`min-h-10 shrink-0 rounded-full px-3 text-sm font-semibold shadow-sm transition active:scale-[0.98] sm:min-h-11 sm:px-4 ${
+                  className={`${isKiosk ? "min-h-14 px-6 text-lg" : "min-h-10 px-3 text-sm sm:min-h-11 sm:px-4"} shrink-0 rounded-full font-semibold shadow-sm transition active:scale-[0.98] ${
                     activeCategory === category.id
                       ? "bg-[#17211f] text-white"
                       : "border border-[#e3dfd5] bg-white/85 text-[#485953]"
@@ -271,16 +370,16 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-5 px-3 py-3 sm:px-4 sm:py-4 lg:grid-cols-[1fr_372px] lg:gap-6 lg:py-6">
+      <section className={`${isKiosk ? "mx-auto grid max-w-[1500px] gap-6 px-6 py-6 xl:grid-cols-[1fr_430px]" : "mx-auto grid max-w-6xl gap-5 px-3 py-3 sm:px-4 sm:py-4 lg:grid-cols-[1fr_372px] lg:gap-6 lg:py-6"}`}>
         <div className="min-w-0 space-y-5 sm:space-y-7">
           <section className="overflow-hidden rounded-2xl border border-[#e0ddd4] bg-[#13201d] text-white shadow-[0_16px_42px_rgba(19,32,29,0.14)] sm:rounded-[1.35rem] sm:shadow-[0_22px_70px_rgba(19,32,29,0.18)]">
             <div className="p-4 sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-200">Scan, order, pay</p>
-                  <h1 className="mt-2 text-2xl font-semibold leading-tight sm:mt-3 sm:text-4xl">{menuData.restaurant.name}</h1>
-                  <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-5 text-[#d7e4de] sm:mt-3 sm:line-clamp-none sm:leading-6">{menuData.restaurant.description}</p>
-                  <p className="mt-2 line-clamp-1 max-w-2xl text-xs leading-5 text-[#aebdb7] sm:mt-3 sm:text-sm sm:leading-6">{menuData.restaurant.address}</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-200">{isKiosk ? "Tap, order, pay at cashier" : "Scan, order, pay"}</p>
+                  <h1 className={`mt-2 font-semibold leading-tight sm:mt-3 ${isKiosk ? "text-5xl" : "text-2xl sm:text-4xl"}`}>{menuData.restaurant.name}</h1>
+                  <p className={`mt-2 line-clamp-2 max-w-2xl text-[#d7e4de] sm:mt-3 sm:line-clamp-none ${isKiosk ? "text-xl leading-8" : "text-sm leading-5 sm:leading-6"}`}>{menuData.restaurant.description}</p>
+                  <p className={`mt-2 line-clamp-1 max-w-2xl text-[#aebdb7] sm:mt-3 ${isKiosk ? "text-base leading-6" : "text-xs leading-5 sm:text-sm sm:leading-6"}`}>{menuData.restaurant.address}</p>
                 </div>
                 <div className="hidden min-w-28 rounded-2xl border border-white/12 bg-white/10 p-3 text-center sm:grid">
                   <span className="text-xs font-semibold uppercase text-[#bdd9d2]">Cart</span>
@@ -293,7 +392,7 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
                   {menuData.restaurant.name} is currently closed for ordering. You can still browse the menu.
                 </p>
               ) : (
-                <div className="mt-5 hidden gap-2 text-sm sm:grid sm:grid-cols-3">
+                <div className={`mt-5 hidden gap-2 sm:grid sm:grid-cols-3 ${isKiosk ? "text-lg" : "text-sm"}`}>
                   <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">No app needed</div>
                   <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">Order number</div>
                   <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">Pay at counter</div>
@@ -307,30 +406,30 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
               <section key={category.id} id={category.id} className="scroll-mt-28 sm:scroll-mt-32">
                 <div className="mb-2 flex items-end justify-between gap-3 sm:mb-3">
                   <div>
-                    <h2 className="text-lg font-semibold leading-tight sm:text-xl">{category.name}</h2>
-                    <p className="mt-0.5 text-xs text-[#66756f] sm:mt-1 sm:text-sm">{category.items.length} menu items</p>
+                    <h2 className={`font-semibold leading-tight ${isKiosk ? "text-3xl" : "text-lg sm:text-xl"}`}>{category.name}</h2>
+                    <p className={`mt-0.5 text-[#66756f] sm:mt-1 ${isKiosk ? "text-base" : "text-xs sm:text-sm"}`}>{category.items.length} menu items</p>
                   </div>
                 </div>
-                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
+                <div className={`grid gap-2.5 sm:gap-3 ${isKiosk ? "md:grid-cols-2 2xl:grid-cols-3" : "sm:grid-cols-2"}`}>
                   {category.items.map((item) => (
                     <button
                       key={item.id}
                       disabled={item.isSoldOut || !menuData.restaurant.isOpen}
                       aria-disabled={item.isSoldOut || !menuData.restaurant.isOpen}
                       onClick={() => setSelectedItem(item)}
-                      className="group min-h-28 overflow-hidden rounded-xl border border-[#e2ded4] bg-white p-2.5 text-left shadow-[0_8px_22px_rgba(28,39,35,0.05)] transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-[0_16px_38px_rgba(28,39,35,0.1)] active:scale-[0.99] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-36 sm:rounded-2xl sm:p-3 sm:shadow-[0_10px_30px_rgba(28,39,35,0.06)]"
+                      className={`group overflow-hidden border border-[#e2ded4] bg-white text-left shadow-[0_8px_22px_rgba(28,39,35,0.05)] transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-[0_16px_38px_rgba(28,39,35,0.1)] active:scale-[0.99] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 ${isKiosk ? "min-h-44 rounded-3xl p-4" : "min-h-28 rounded-xl p-2.5 sm:min-h-36 sm:rounded-2xl sm:p-3 sm:shadow-[0_10px_30px_rgba(28,39,35,0.06)]"}`}
                     >
-                      <div className="flex h-full gap-2.5 sm:gap-3">
-                        <MenuImage src={item.imageUrl} className="h-24 w-24 shrink-0 rounded-lg sm:h-32 sm:w-32 sm:rounded-xl" loading="lazy" />
+                      <div className={`flex h-full ${isKiosk ? "gap-4" : "gap-2.5 sm:gap-3"}`}>
+                        <MenuImage src={item.imageUrl} className={isKiosk ? "h-36 w-36 shrink-0 rounded-2xl" : "h-24 w-24 shrink-0 rounded-lg sm:h-32 sm:w-32 sm:rounded-xl"} loading="lazy" />
                         <div className="flex min-w-0 flex-1 flex-col">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="min-w-0 text-base font-semibold leading-snug text-[#182522]">{item.name}</h3>
+                            <h3 className={`min-w-0 font-semibold leading-snug text-[#182522] ${isKiosk ? "text-2xl" : "text-base"}`}>{item.name}</h3>
                             {item.isSoldOut ? <Badge tone="danger">Sold out</Badge> : null}
                           </div>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#65756f] sm:mt-2 sm:text-sm sm:leading-6">{item.description}</p>
+                          <p className={`mt-1 line-clamp-2 text-[#65756f] sm:mt-2 ${isKiosk ? "text-base leading-7" : "text-xs leading-5 sm:text-sm sm:leading-6"}`}>{item.description}</p>
                           <div className="mt-auto flex items-center justify-between gap-3 pt-2 sm:pt-3">
-                            <p className="font-semibold text-teal-800">{formatMoney(item.priceCents, menuData.restaurant.currency)}</p>
-                            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#17211f] text-lg font-semibold text-white transition group-hover:bg-teal-700 sm:size-10">
+                            <p className={`font-semibold text-teal-800 ${isKiosk ? "text-xl" : ""}`}>{formatMoney(item.priceCents, menuData.restaurant.currency)}</p>
+                            <span className={`grid shrink-0 place-items-center rounded-full bg-[#17211f] font-semibold text-white transition group-hover:bg-teal-700 ${isKiosk ? "size-14 text-2xl" : "size-9 text-lg sm:size-10"}`}>
                               +
                             </span>
                           </div>
@@ -351,9 +450,10 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
           )}
         </div>
 
-        <aside className="hidden lg:block">
+        <aside className={isKiosk ? "hidden xl:block" : "hidden lg:block"}>
           <div className="sticky top-32">
             <CartPanel
+              mode={mode}
               cart={cart}
               currency={menuData.restaurant.currency}
               customerName={customerName}
@@ -377,7 +477,7 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
         </aside>
       </section>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#ded8cc] bg-white/96 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_28px_rgba(20,31,28,0.1)] backdrop-blur-xl sm:px-4 sm:pb-[calc(0.9rem+env(safe-area-inset-bottom))] sm:pt-3 lg:hidden">
+      <div className={`fixed inset-x-0 bottom-0 z-30 border-t border-[#ded8cc] bg-white/96 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_28px_rgba(20,31,28,0.1)] backdrop-blur-xl sm:px-4 sm:pb-[calc(0.9rem+env(safe-area-inset-bottom))] sm:pt-3 ${isKiosk ? "xl:hidden" : "lg:hidden"}`}>
         <div className="mx-auto max-w-md">
           <div className="mb-2 flex items-center justify-between gap-3 sm:mb-3">
             <div>
@@ -419,6 +519,7 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-4">
               <CartPanel
+                mode={mode}
                 cart={cart}
                 currency={menuData.restaurant.currency}
                 customerName={customerName}
@@ -447,6 +548,7 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
         <ItemModal
           item={selectedItem}
           currency={menuData.restaurant.currency}
+          mode={mode}
           onClose={() => setSelectedItem(null)}
           onAdd={(cartItem) => {
             addToCart(cartItem);
@@ -455,11 +557,38 @@ export function CustomerMenu({ data }: { data: MenuResponse }) {
           }}
         />
       ) : null}
+
+      {isKiosk && idleWarningVisible ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Kiosk idle reset warning">
+          <div className="max-w-xl rounded-3xl bg-white p-8 text-center shadow-2xl">
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-teal-700">Still ordering?</p>
+            <h2 className="mt-3 text-4xl font-semibold">This kiosk will reset soon</h2>
+            <p className="mt-4 text-xl leading-8 text-[#65756f]">
+              Touch anywhere to continue. Session resets in {idleSecondsRemaining} seconds.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                className="min-h-16 flex-1 rounded-2xl bg-[#13201d] px-6 text-xl font-semibold text-white"
+                onClick={() => setIdleWarningVisible(false)}
+              >
+                Continue ordering
+              </button>
+              <button
+                className="min-h-16 flex-1 rounded-2xl border border-[#d9d4ca] bg-white px-6 text-xl font-semibold text-[#182522]"
+                onClick={resetSession}
+              >
+                Start over now
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
 
 function CartPanel({
+  mode = "customer",
   cart,
   currency,
   customerName,
@@ -473,6 +602,7 @@ function CartPanel({
   onPlaceOrder,
   onUpdateQuantity,
 }: {
+  mode?: "customer" | "kiosk";
   cart: CartItem[];
   currency: string;
   customerName: string;
@@ -486,31 +616,32 @@ function CartPanel({
   onPlaceOrder: () => void;
   onUpdateQuantity: (key: string, quantity: number) => void;
 }) {
+  const isKiosk = mode === "kiosk";
   const totalCents = cart.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
   const count = cart.reduce((sum, item) => sum + item.quantity, 0);
   const unavailableItemSet = useMemo(() => new Set(unavailableItemIds), [unavailableItemIds]);
   const hasUnavailableItems = unavailableItemIds.length > 0;
 
   return (
-    <div className="rounded-xl border border-[#e0ddd4] bg-white p-3 shadow-[0_10px_28px_rgba(28,39,35,0.07)] sm:rounded-2xl sm:p-4 sm:shadow-[0_14px_42px_rgba(28,39,35,0.08)]">
+    <div className={`border border-[#e0ddd4] bg-white shadow-[0_10px_28px_rgba(28,39,35,0.07)] ${isKiosk ? "rounded-3xl p-5" : "rounded-xl p-3 sm:rounded-2xl sm:p-4 sm:shadow-[0_14px_42px_rgba(28,39,35,0.08)]"}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold sm:text-lg">Your order</h2>
-          <p className="mt-0.5 text-xs leading-5 text-[#65756f] sm:mt-1 sm:text-sm">{cart.length ? cartCountLabel(count) : "Start by adding menu items."}</p>
+          <h2 className={`font-semibold ${isKiosk ? "text-3xl" : "text-base sm:text-lg"}`}>Your order</h2>
+          <p className={`mt-0.5 leading-5 text-[#65756f] sm:mt-1 ${isKiosk ? "text-base" : "text-xs sm:text-sm"}`}>{cart.length ? cartCountLabel(count) : "Start by adding menu items."}</p>
         </div>
-        <span className="rounded-full bg-[#eef8f5] px-3 py-1 text-xs font-semibold text-teal-800">Counter pay</span>
+        <span className={`rounded-full bg-[#eef8f5] font-semibold text-teal-800 ${isKiosk ? "px-4 py-2 text-sm" : "px-3 py-1 text-xs"}`}>Counter pay</span>
       </div>
 
-      <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
+      <div className={`mt-3 space-y-2.5 sm:mt-4 sm:space-y-3 ${isKiosk ? "max-h-[42vh] overflow-y-auto pr-1" : ""}`}>
         {cart.length ? (
           cart.map((item) => {
             const isUnavailable = unavailableItemSet.has(item.menuItemId);
             return (
-              <div key={item.key} className="rounded-xl border border-[#eee9df] bg-[#fbfaf7] p-2.5 sm:rounded-2xl sm:p-3">
+              <div key={item.key} className={`border border-[#eee9df] bg-[#fbfaf7] ${isKiosk ? "rounded-2xl p-4" : "rounded-xl p-2.5 sm:rounded-2xl sm:p-3"}`}>
                 <div className="flex justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold leading-snug">{item.name}</p>
+                      <p className={`font-semibold leading-snug ${isKiosk ? "text-xl" : ""}`}>{item.name}</p>
                       {isUnavailable ? <Badge tone="danger">Unavailable</Badge> : null}
                     </div>
                     {item.selectedOptions.length ? (
@@ -523,20 +654,20 @@ function CartPanel({
                       <p className="mt-1 text-xs font-semibold text-rose-700">Remove this item before placing the order.</p>
                     ) : null}
                   </div>
-                  <p className="shrink-0 font-semibold">{formatMoney(item.unitPriceCents * item.quantity, currency)}</p>
+                  <p className={`shrink-0 font-semibold ${isKiosk ? "text-xl" : ""}`}>{formatMoney(item.unitPriceCents * item.quantity, currency)}</p>
                 </div>
                 <div className="mt-2.5 flex items-center gap-2 sm:mt-3">
                   <Button
-                    className="rounded-full px-3"
+                    className={`rounded-full ${isKiosk ? "min-h-14 min-w-14 px-4 text-xl" : "px-3"}`}
                     variant="secondary"
                     aria-label={`Decrease ${item.name}`}
                     onClick={() => onUpdateQuantity(item.key, item.quantity - 1)}
                   >
                     -
                   </Button>
-                  <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                  <span className={`text-center font-semibold ${isKiosk ? "w-12 text-xl" : "w-8"}`}>{item.quantity}</span>
                   <Button
-                    className="rounded-full px-3"
+                    className={`rounded-full ${isKiosk ? "min-h-14 min-w-14 px-4 text-xl" : "px-3"}`}
                     variant="secondary"
                     aria-label={`Increase ${item.name}`}
                     disabled={item.quantity >= 20}
@@ -544,7 +675,7 @@ function CartPanel({
                   >
                     +
                   </Button>
-                  <Button className="ml-auto rounded-full px-3" variant="ghost" onClick={() => onUpdateQuantity(item.key, 0)}>
+                  <Button className={`ml-auto rounded-full ${isKiosk ? "min-h-14 px-5 text-lg" : "px-3"}`} variant="ghost" onClick={() => onUpdateQuantity(item.key, 0)}>
                     Remove
                   </Button>
                 </div>
@@ -552,28 +683,28 @@ function CartPanel({
             );
           })
         ) : (
-          <div className="rounded-xl bg-[#fbfaf7] p-3 text-sm leading-6 text-[#65756f] sm:rounded-2xl sm:p-4">
-            Add items to build your order. Your cart is saved on this phone if the page refreshes.
+          <div className={`bg-[#fbfaf7] leading-6 text-[#65756f] ${isKiosk ? "rounded-2xl p-5 text-lg" : "rounded-xl p-3 text-sm sm:rounded-2xl sm:p-4"}`}>
+            {isKiosk ? "Tap menu items to build your order." : "Add items to build your order. Your cart is saved on this phone if the page refreshes."}
           </div>
         )}
       </div>
 
-      <label className="mt-3 block text-sm font-semibold sm:mt-4">
+      <label className={`mt-3 block font-semibold sm:mt-4 ${isKiosk ? "text-lg" : "text-sm"}`}>
         Name for pickup
         <input
           value={customerName}
           onChange={(event) => onNameChange(event.target.value)}
-          className="mt-2 min-h-11 w-full rounded-xl border border-[#d9d4ca] bg-white px-3 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100 sm:min-h-12"
+          className={`mt-2 w-full rounded-xl border border-[#d9d4ca] bg-white px-3 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100 ${isKiosk ? "min-h-16 text-xl" : "min-h-11 sm:min-h-12"}`}
           placeholder="Optional"
           maxLength={80}
         />
       </label>
-      <label className="mt-3 block text-sm font-semibold sm:mt-4">
+      <label className={`mt-3 block font-semibold sm:mt-4 ${isKiosk ? "text-lg" : "text-sm"}`}>
         Order note
         <textarea
           value={customerNote}
           onChange={(event) => onNoteChange(event.target.value)}
-          className="mt-2 min-h-20 w-full rounded-xl border border-[#d9d4ca] bg-white px-3 py-2 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100 sm:min-h-24"
+          className={`mt-2 w-full rounded-xl border border-[#d9d4ca] bg-white px-3 py-2 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100 ${isKiosk ? "min-h-28 text-xl" : "min-h-20 sm:min-h-24"}`}
           placeholder="Optional note for cashier or kitchen"
           maxLength={240}
         />
@@ -591,14 +722,14 @@ function CartPanel({
         </p>
       ) : null}
 
-      <div className="mt-3 rounded-xl bg-[#13201d] p-3 text-white sm:mt-4 sm:rounded-2xl sm:p-4">
+      <div className={`mt-3 bg-[#13201d] text-white sm:mt-4 ${isKiosk ? "rounded-3xl p-5" : "rounded-xl p-3 sm:rounded-2xl sm:p-4"}`}>
         <div className="flex items-center justify-between gap-3">
-          <span className="font-semibold">Total</span>
-          <span className="text-xl font-semibold sm:text-2xl">{formatMoney(totalCents, currency)}</span>
+          <span className={`font-semibold ${isKiosk ? "text-xl" : ""}`}>Total</span>
+          <span className={`font-semibold ${isKiosk ? "text-4xl" : "text-xl sm:text-2xl"}`}>{formatMoney(totalCents, currency)}</span>
         </div>
-        <p className="mt-1.5 text-xs leading-5 text-[#bdd9d2] sm:mt-2 sm:text-sm">Payment is made at the counter. The kitchen starts after cashier confirms payment.</p>
+        <p className={`mt-1.5 leading-5 text-[#bdd9d2] sm:mt-2 ${isKiosk ? "text-base" : "text-xs sm:text-sm"}`}>Payment is made at the counter. The kitchen starts after cashier confirms payment.</p>
       </div>
-      <Button className="mt-4 w-full rounded-xl" disabled={!cart.length || isPending || hasUnavailableItems || !restaurantOpen} onClick={onPlaceOrder}>
+      <Button className={`mt-4 w-full rounded-xl ${isKiosk ? "min-h-16 text-xl" : ""}`} disabled={!cart.length || isPending || hasUnavailableItems || !restaurantOpen} onClick={onPlaceOrder}>
         {isPending ? "Placing order..." : "Place order"}
       </Button>
     </div>
@@ -640,14 +771,17 @@ function MenuImage({
 function ItemModal({
   item,
   currency,
+  mode = "customer",
   onClose,
   onAdd,
 }: {
   item: MenuItemDto;
   currency: string;
+  mode?: "customer" | "kiosk";
   onClose: () => void;
   onAdd: (item: CartItem) => void;
 }) {
+  const isKiosk = mode === "kiosk";
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<SelectedOptionDto[]>([]);
@@ -687,25 +821,25 @@ function ItemModal({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="mx-auto flex max-h-[92dvh] w-full max-w-xl animate-[sheetIn_180ms_ease-out] flex-col overflow-hidden rounded-t-[1.25rem] bg-white shadow-2xl sm:max-h-[94dvh] sm:rounded-2xl">
+      <div className={`mx-auto flex w-full animate-[sheetIn_180ms_ease-out] flex-col overflow-hidden bg-white shadow-2xl ${isKiosk ? "max-h-[92dvh] max-w-4xl rounded-3xl" : "max-h-[92dvh] max-w-xl rounded-t-[1.25rem] sm:max-h-[94dvh] sm:rounded-2xl"}`}>
         <div className="relative">
-          <MenuImage src={item.imageUrl} className="h-40 w-full sm:h-56" loading="eager" />
+          <MenuImage src={item.imageUrl} className={isKiosk ? "h-72 w-full" : "h-40 w-full sm:h-56"} loading="eager" />
           <button
-            className="absolute right-3 top-3 grid size-11 place-items-center rounded-full bg-white/95 text-xl shadow-sm"
+            className={`absolute right-3 top-3 grid place-items-center rounded-full bg-white/95 text-xl shadow-sm ${isKiosk ? "size-14" : "size-11"}`}
             onClick={onClose}
             aria-label="Close item details"
           >
             x
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+        <div className={`min-h-0 flex-1 overflow-y-auto ${isKiosk ? "p-6" : "p-4 sm:p-5"}`}>
           <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-teal-700">Menu item</p>
-              <h2 className="mt-1.5 text-xl font-semibold leading-tight sm:mt-2 sm:text-2xl">{item.name}</h2>
-              <p className="mt-1.5 text-sm leading-6 text-[#65756f] sm:mt-2 sm:text-base sm:leading-7">{item.description}</p>
+              <h2 className={`mt-1.5 font-semibold leading-tight sm:mt-2 ${isKiosk ? "text-4xl" : "text-xl sm:text-2xl"}`}>{item.name}</h2>
+              <p className={`mt-1.5 text-[#65756f] sm:mt-2 ${isKiosk ? "text-xl leading-8" : "text-sm leading-6 sm:text-base sm:leading-7"}`}>{item.description}</p>
             </div>
-            <span className="shrink-0 rounded-full bg-[#eef8f5] px-3 py-1 text-sm font-semibold text-teal-800">
+            <span className={`shrink-0 rounded-full bg-[#eef8f5] px-3 py-1 font-semibold text-teal-800 ${isKiosk ? "text-xl" : "text-sm"}`}>
               {formatMoney(item.priceCents, currency)}
             </span>
           </div>
@@ -715,7 +849,7 @@ function ItemModal({
               {item.optionGroups.map((group) => (
                 <section key={group.name}>
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-semibold">{group.name}</h3>
+                    <h3 className={`font-semibold ${isKiosk ? "text-xl" : ""}`}>{group.name}</h3>
                     <span className="text-xs text-[#65756f]">{group.required ? "Required" : `Up to ${group.maxChoices}`}</span>
                   </div>
                   <div className="mt-2 grid gap-2">
@@ -725,7 +859,7 @@ function ItemModal({
                         <button
                           key={option.name}
                           onClick={() => toggleOption(group.name, option.name, option.priceCents, group.maxChoices)}
-                          className={`flex min-h-12 items-center justify-between rounded-xl border px-3 text-left transition active:scale-[0.99] sm:min-h-13 sm:px-4 ${
+                          className={`flex items-center justify-between rounded-xl border text-left transition active:scale-[0.99] ${isKiosk ? "min-h-16 px-5 text-xl" : "min-h-12 px-3 sm:min-h-13 sm:px-4"} ${
                             checked ? "border-teal-600 bg-teal-50" : "border-[#e2ded4] bg-white"
                           }`}
                         >
@@ -740,32 +874,32 @@ function ItemModal({
             </div>
           ) : null}
 
-          <label className="mt-4 block text-sm font-semibold sm:mt-5">
+          <label className={`mt-4 block font-semibold sm:mt-5 ${isKiosk ? "text-xl" : "text-sm"}`}>
             Item note
             <textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              className="mt-2 min-h-20 w-full rounded-xl border border-[#d9d4ca] px-3 py-2 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100 sm:min-h-24"
+              className={`mt-2 w-full rounded-xl border border-[#d9d4ca] px-3 py-2 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100 ${isKiosk ? "min-h-28 text-xl" : "min-h-20 sm:min-h-24"}`}
               placeholder="Example: less ice, sauce on side"
               maxLength={160}
             />
           </label>
         </div>
-        <div className="border-t border-[#e2ded4] bg-white p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className={`border-t border-[#e2ded4] bg-white ${isKiosk ? "p-6" : "p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(1rem+env(safe-area-inset-bottom))]"}`}>
           <div className="mb-3 flex items-center justify-between sm:mb-4">
             <div className="flex items-center gap-2">
-              <Button className="rounded-full px-3" variant="secondary" aria-label="Decrease quantity" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+              <Button className={`rounded-full ${isKiosk ? "min-h-16 min-w-16 text-2xl" : "px-3"}`} variant="secondary" aria-label="Decrease quantity" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
                 -
               </Button>
-              <span className="w-10 text-center font-semibold">{quantity}</span>
-              <Button className="rounded-full px-3" variant="secondary" aria-label="Increase quantity" onClick={() => setQuantity(Math.min(20, quantity + 1))}>
+              <span className={`text-center font-semibold ${isKiosk ? "w-16 text-2xl" : "w-10"}`}>{quantity}</span>
+              <Button className={`rounded-full ${isKiosk ? "min-h-16 min-w-16 text-2xl" : "px-3"}`} variant="secondary" aria-label="Increase quantity" onClick={() => setQuantity(Math.min(20, quantity + 1))}>
                 +
               </Button>
             </div>
-            <span className="text-xl font-semibold">{formatMoney(unitPriceCents * quantity, currency)}</span>
+            <span className={`font-semibold ${isKiosk ? "text-4xl" : "text-xl"}`}>{formatMoney(unitPriceCents * quantity, currency)}</span>
           </div>
           <Button
-            className="w-full rounded-xl"
+            className={`w-full rounded-xl ${isKiosk ? "min-h-16 text-xl" : ""}`}
             disabled={missingRequired}
             onClick={() =>
               onAdd({

@@ -14,6 +14,7 @@ export default async function OrderPage({
   const { code } = await params;
   const query = await searchParams;
   const accessToken = typeof query.t === "string" ? query.t : "";
+  const mode = query.mode === "kiosk" ? "kiosk" : "customer";
 
   if (!accessToken) notFound();
 
@@ -60,6 +61,7 @@ export default async function OrderPage({
         })),
       }}
       accessToken={accessToken}
+      mode={mode}
     />
   );
 }
