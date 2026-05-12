@@ -485,7 +485,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
             <div className="p-4 sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
-                  <h1 className={`font-semibold leading-tight ${isKiosk ? "text-5xl" : "text-2xl sm:text-4xl"}`}>{menuData.restaurant.name}</h1>
+                  <RestaurantLogoSlot name={menuData.restaurant.name} variant={isKiosk ? "menuKiosk" : "menu"} />
                 </div>
                 <div className="hidden min-w-28 rounded-2xl border border-[#b58d57]/45 bg-white/25 p-3 text-center sm:grid">
                   <span className="text-xs font-semibold uppercase text-[#5c432a]">Cart</span>
@@ -876,24 +876,18 @@ function KioskStartScreen({
 }) {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f4ed] p-8 text-[#182522]">
-      <section className="grid w-full max-w-6xl gap-8 overflow-hidden rounded-[2rem] border border-[#c9a46f] bg-[#d7b98a] p-6 text-[#2f2418] shadow-[0_28px_90px_rgba(138,91,43,0.2)] sm:p-10 lg:grid-cols-[1fr_360px] lg:p-14">
-        <div className="flex min-h-72 flex-col justify-center sm:min-h-[420px] lg:min-h-[560px]">
-          <div>
-            <p className="text-lg font-bold uppercase tracking-[0.16em] text-[#5c432a]">OrderKo.com kiosk</p>
-            <h1 className="mt-6 text-5xl font-semibold leading-none sm:text-7xl">{restaurant.name}</h1>
-          </div>
-        </div>
+      <section className="flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col items-center justify-center gap-10 overflow-hidden rounded-[2rem] border border-[#c9a46f] bg-[#d7b98a] p-8 text-center text-[#2f2418] shadow-[0_28px_90px_rgba(138,91,43,0.2)] sm:p-12 lg:p-16">
+        <RestaurantLogoSlot name={restaurant.name} variant="kioskWelcome" />
 
-        <div className="flex flex-col justify-center rounded-[1.75rem] bg-white p-8 text-[#182522]">
-          <p className="text-lg font-semibold text-teal-700">{restaurant.isOpen ? "Ready to order" : "Ordering paused"}</p>
-          <h2 className="mt-3 text-4xl font-semibold leading-tight">Start your order here</h2>
+        <div className="w-full max-w-3xl">
+          <h2 className="text-5xl font-semibold leading-tight sm:text-7xl">Start your order here</h2>
           {!restaurant.isOpen ? (
-            <p className="mt-6 rounded-2xl bg-rose-50 p-4 text-lg leading-7 text-rose-700">
+            <p className="mx-auto mt-8 max-w-2xl rounded-2xl bg-rose-50 p-4 text-lg leading-7 text-rose-700">
               This restaurant is currently closed for ordering. Please ask the counter for help.
             </p>
           ) : null}
           <button
-            className="mt-8 min-h-24 rounded-[1.5rem] bg-[#8a5a2b] px-8 text-3xl font-semibold text-white shadow-[0_18px_50px_rgba(138,91,43,0.28)] transition active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-600"
+            className="mt-10 min-h-24 w-full max-w-xl rounded-[1.5rem] bg-[#b42318] px-8 text-3xl font-semibold text-white shadow-[0_18px_50px_rgba(180,35,24,0.28)] transition hover:bg-[#981b12] active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-600"
             disabled={!restaurant.isOpen}
             onClick={onStart}
           >
@@ -902,6 +896,27 @@ function KioskStartScreen({
         </div>
       </section>
     </main>
+  );
+}
+
+function RestaurantLogoSlot({
+  name,
+  variant,
+}: {
+  name: string;
+  variant: "menu" | "menuKiosk" | "kioskWelcome";
+}) {
+  const classes = {
+    menu: "min-h-16 max-w-full rounded-2xl border border-[#b58d57]/35 bg-white/20 px-4 py-3 text-2xl sm:text-4xl",
+    menuKiosk: "min-h-24 max-w-3xl rounded-[1.5rem] border border-[#b58d57]/35 bg-white/20 px-6 py-5 text-5xl",
+    kioskWelcome: "min-h-32 w-full max-w-3xl rounded-[2rem] border border-[#b58d57]/40 bg-white/20 px-8 py-8 text-6xl sm:text-8xl",
+  } satisfies Record<typeof variant, string>;
+
+  return (
+    <div className={`flex items-center justify-center ${classes[variant]}`} aria-label={`${name} logo placeholder`}>
+      {/* Replace this fallback text with a restaurant logo image when logo uploads are added. */}
+      <span className="break-words font-semibold leading-none">{name}</span>
+    </div>
   );
 }
 
