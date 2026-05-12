@@ -464,14 +464,13 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                     setActiveCategory(category.id);
                     document.getElementById(category.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
-                  className={`${isKiosk ? "min-h-14 px-6 text-lg" : "min-h-10 px-3 text-sm sm:min-h-11 sm:px-4"} shrink-0 rounded-full font-semibold shadow-sm transition active:scale-[0.98] ${
+                  className={`${isKiosk ? "min-h-14 px-6 text-lg" : "min-h-10 px-3 text-sm sm:min-h-11 sm:px-4"} shrink-0 rounded-2xl font-semibold shadow-sm transition active:scale-[0.98] ${
                     activeCategory === category.id
                       ? "bg-[#8a5a2b] text-white"
                       : "border border-[#e3dfd5] bg-white/85 text-[#485953]"
                   }`}
                 >
                   {category.name}
-                  <span className="ml-2 text-xs opacity-70">{category.items.length}</span>
                 </button>
               ))}
             </div>
@@ -486,10 +485,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
             <div className="p-4 sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#5c432a]">{isKiosk ? "Tap, order, pay at cashier" : "Scan, order, pay"}</p>
-                  <h1 className={`mt-2 font-semibold leading-tight sm:mt-3 ${isKiosk ? "text-5xl" : "text-2xl sm:text-4xl"}`}>{menuData.restaurant.name}</h1>
-                  <p className={`mt-2 line-clamp-2 max-w-2xl text-[#3f3020] sm:mt-3 sm:line-clamp-none ${isKiosk ? "text-xl leading-8" : "text-sm leading-5 sm:leading-6"}`}>{menuData.restaurant.description}</p>
-                  <p className={`mt-2 line-clamp-1 max-w-2xl text-[#5c432a] sm:mt-3 ${isKiosk ? "text-base leading-6" : "text-xs leading-5 sm:text-sm sm:leading-6"}`}>{menuData.restaurant.address}</p>
+                  <h1 className={`font-semibold leading-tight ${isKiosk ? "text-5xl" : "text-2xl sm:text-4xl"}`}>{menuData.restaurant.name}</h1>
                 </div>
                 <div className="hidden min-w-28 rounded-2xl border border-[#b58d57]/45 bg-white/25 p-3 text-center sm:grid">
                   <span className="text-xs font-semibold uppercase text-[#5c432a]">Cart</span>
@@ -501,13 +497,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                 <p className="mt-5 rounded-2xl bg-rose-100 p-4 text-sm leading-6 text-rose-800">
                   {menuData.restaurant.name} is currently closed for ordering. You can still browse the menu.
                 </p>
-              ) : (
-                <div className={`mt-5 hidden gap-2 sm:grid sm:grid-cols-3 ${isKiosk ? "text-lg" : "text-sm"}`}>
-                  <div className="rounded-2xl bg-white/25 p-3 text-[#3f3020]">No app needed</div>
-                  <div className="rounded-2xl bg-white/25 p-3 text-[#3f3020]">Order number</div>
-                  <div className="rounded-2xl bg-white/25 p-3 text-[#3f3020]">Pay at counter</div>
-                </div>
-              )}
+              ) : null}
             </div>
           </section>
 
@@ -517,7 +507,6 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                 <div className="mb-2 flex items-end justify-between gap-3 sm:mb-3">
                   <div>
                     <h2 className={`font-semibold leading-tight ${isKiosk ? "text-3xl" : "text-lg sm:text-xl"}`}>{category.name}</h2>
-                    <p className={`mt-0.5 text-[#66756f] sm:mt-1 ${isKiosk ? "text-base" : "text-xs sm:text-sm"}`}>{category.items.length} menu items</p>
                   </div>
                 </div>
                 <div className={`grid gap-2.5 sm:gap-3 ${isKiosk ? "md:grid-cols-2 2xl:grid-cols-3" : "sm:grid-cols-2"}`}>
@@ -887,28 +876,17 @@ function KioskStartScreen({
 }) {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f4ed] p-8 text-[#182522]">
-      <section className="grid w-full max-w-6xl gap-8 overflow-hidden rounded-[2rem] border border-[#c9a46f] bg-[#d7b98a] p-10 text-[#2f2418] shadow-[0_28px_90px_rgba(138,91,43,0.2)] lg:grid-cols-[1fr_360px] lg:p-14">
-        <div className="flex min-h-[560px] flex-col justify-between">
+      <section className="grid w-full max-w-6xl gap-8 overflow-hidden rounded-[2rem] border border-[#c9a46f] bg-[#d7b98a] p-6 text-[#2f2418] shadow-[0_28px_90px_rgba(138,91,43,0.2)] sm:p-10 lg:grid-cols-[1fr_360px] lg:p-14">
+        <div className="flex min-h-72 flex-col justify-center sm:min-h-[420px] lg:min-h-[560px]">
           <div>
             <p className="text-lg font-bold uppercase tracking-[0.16em] text-[#5c432a]">OrderKo.com kiosk</p>
-            <h1 className="mt-6 text-7xl font-semibold leading-none">{restaurant.name}</h1>
-            <p className="mt-6 max-w-3xl text-2xl leading-10 text-[#3f3020]">{restaurant.description}</p>
-            <p className="mt-4 max-w-3xl text-xl leading-8 text-[#5c432a]">{restaurant.address}</p>
-          </div>
-
-          <div className="mt-10 grid gap-4 text-xl text-[#3f3020] md:grid-cols-3">
-            <div className="rounded-3xl bg-white/25 p-5">Tap items</div>
-            <div className="rounded-3xl bg-white/25 p-5">Get order number</div>
-            <div className="rounded-3xl bg-white/25 p-5">Pay at counter</div>
+            <h1 className="mt-6 text-5xl font-semibold leading-none sm:text-7xl">{restaurant.name}</h1>
           </div>
         </div>
 
         <div className="flex flex-col justify-center rounded-[1.75rem] bg-white p-8 text-[#182522]">
           <p className="text-lg font-semibold text-teal-700">{restaurant.isOpen ? "Ready to order" : "Ordering paused"}</p>
           <h2 className="mt-3 text-4xl font-semibold leading-tight">Start your order here</h2>
-          <p className="mt-4 text-xl leading-8 text-[#65756f]">
-            Place your order on this kiosk, then take your order number to the counter to pay.
-          </p>
           {!restaurant.isOpen ? (
             <p className="mt-6 rounded-2xl bg-rose-50 p-4 text-lg leading-7 text-rose-700">
               This restaurant is currently closed for ordering. Please ask the counter for help.
