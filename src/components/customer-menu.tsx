@@ -8,7 +8,7 @@ import type { MenuItemDto, MenuResponse, SelectedOptionDto } from "@/types/order
 import { Button, Badge } from "@/components/ui";
 
 const G_CAFE_LOGO_SRC = "/assets/g-cafe-logo.jpg";
-const KIOSK_HERO_IMAGE_SRC = "/assets/rustic-cafe-hero.jpg";
+const KIOSK_HERO_IMAGE_SRC = "/assets/g-cafe-kiosk-hero.jpg";
 
 type CartItem = {
   key: string;
@@ -432,7 +432,6 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
     return (
       <KioskStartScreen
         restaurant={menuData.restaurant}
-        logoSrc={restaurantLogoSrc}
         onStart={() => {
           setKioskStarted(true);
           setKioskConfirmation(null);
@@ -879,11 +878,9 @@ function MenuImage({
 
 function KioskStartScreen({
   restaurant,
-  logoSrc,
   onStart,
 }: {
   restaurant: MenuResponse["restaurant"];
-  logoSrc?: string;
   onStart: () => void;
 }) {
   return (
@@ -897,11 +894,10 @@ function KioskStartScreen({
           sizes="(max-width: 1200px) 100vw, 1152px"
           className="absolute inset-0 -z-20 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(21,16,11,0.38),rgba(21,16,11,0.72))]" />
-        <RestaurantLogoSlot logoSrc={logoSrc} name={restaurant.name} variant="kioskWelcome" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(21,16,11,0.18),rgba(21,16,11,0.72))]" />
 
         <div className="w-full max-w-3xl">
-          <h2 className="text-3xl font-semibold leading-tight sm:text-5xl">Start your order here</h2>
+          <h2 className="text-3xl font-semibold leading-tight sm:text-4xl">Start your order here</h2>
           {!restaurant.isOpen ? (
             <p className="mx-auto mt-8 max-w-2xl rounded-2xl bg-rose-50 p-4 text-lg leading-7 text-rose-700">
               This restaurant is currently closed for ordering. Please ask the counter for help.
