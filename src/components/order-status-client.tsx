@@ -218,7 +218,7 @@ export function OrderStatusClient({
               {completed ? (
                 <Link
                   href={returnHref}
-                  className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl bg-[#b42318] px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800"
+                  className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl bg-[#8a5a2b] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#70451f]"
                 >
                   {isKiosk ? `Start next order${kioskReturnSeconds ? ` (${kioskReturnSeconds})` : ""}` : "Close order and return to menu"}
                 </Link>
@@ -291,12 +291,12 @@ export function OrderStatusClient({
               </div>
             ))}
           </div>
-          <div className="mt-3 rounded-xl bg-[#b42318] p-3 text-white sm:mt-4 sm:rounded-2xl sm:p-4">
+          <div className="mt-3 rounded-xl bg-[#d7b98a] p-3 text-[#2f2418] sm:mt-4 sm:rounded-2xl sm:p-4">
             <div className="flex justify-between gap-3 text-lg font-semibold">
               <span>Total</span>
               <span>{formatMoney(order.totalCents, order.restaurant.currency)}</span>
             </div>
-            <p className="mt-1.5 text-xs leading-5 text-[#bdd9d2] sm:mt-2 sm:text-sm">Payment is handled at the counter for this pilot.</p>
+            <p className="mt-1.5 text-xs leading-5 text-[#5c432a] sm:mt-2 sm:text-sm">Payment is handled at the counter for this pilot.</p>
           </div>
         </div>
       </section>

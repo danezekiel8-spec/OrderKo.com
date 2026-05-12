@@ -217,7 +217,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
           margin: 1,
           width: 260,
           color: {
-            dark: "#b42318",
+            dark: "#8a5a2b",
             light: "#ffffff",
           },
         });
@@ -466,7 +466,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                   }}
                   className={`${isKiosk ? "min-h-14 px-6 text-lg" : "min-h-10 px-3 text-sm sm:min-h-11 sm:px-4"} shrink-0 rounded-full font-semibold shadow-sm transition active:scale-[0.98] ${
                     activeCategory === category.id
-                      ? "bg-[#b42318] text-white"
+                      ? "bg-[#8a5a2b] text-white"
                       : "border border-[#e3dfd5] bg-white/85 text-[#485953]"
                   }`}
                 >
@@ -482,19 +482,19 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
 
       <section className={`${isKiosk ? "mx-auto grid max-w-[1500px] gap-6 px-6 py-6 xl:grid-cols-[1fr_430px]" : "mx-auto grid max-w-6xl gap-5 px-3 py-3 sm:px-4 sm:py-4 lg:grid-cols-[1fr_372px] lg:gap-6 lg:py-6"}`}>
         <div className="min-w-0 space-y-5 sm:space-y-7">
-          <section className="overflow-hidden rounded-2xl border border-[#e0ddd4] bg-[#b42318] text-white shadow-[0_16px_42px_rgba(180,35,24,0.14)] sm:rounded-[1.35rem] sm:shadow-[0_22px_70px_rgba(180,35,24,0.18)]">
+          <section className="overflow-hidden rounded-2xl border border-[#c9a46f] bg-[#d7b98a] text-[#2f2418] shadow-[0_16px_42px_rgba(138,91,43,0.14)] sm:rounded-[1.35rem] sm:shadow-[0_22px_70px_rgba(138,91,43,0.18)]">
             <div className="p-4 sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-200">{isKiosk ? "Tap, order, pay at cashier" : "Scan, order, pay"}</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#5c432a]">{isKiosk ? "Tap, order, pay at cashier" : "Scan, order, pay"}</p>
                   <h1 className={`mt-2 font-semibold leading-tight sm:mt-3 ${isKiosk ? "text-5xl" : "text-2xl sm:text-4xl"}`}>{menuData.restaurant.name}</h1>
-                  <p className={`mt-2 line-clamp-2 max-w-2xl text-[#d7e4de] sm:mt-3 sm:line-clamp-none ${isKiosk ? "text-xl leading-8" : "text-sm leading-5 sm:leading-6"}`}>{menuData.restaurant.description}</p>
-                  <p className={`mt-2 line-clamp-1 max-w-2xl text-[#aebdb7] sm:mt-3 ${isKiosk ? "text-base leading-6" : "text-xs leading-5 sm:text-sm sm:leading-6"}`}>{menuData.restaurant.address}</p>
+                  <p className={`mt-2 line-clamp-2 max-w-2xl text-[#3f3020] sm:mt-3 sm:line-clamp-none ${isKiosk ? "text-xl leading-8" : "text-sm leading-5 sm:leading-6"}`}>{menuData.restaurant.description}</p>
+                  <p className={`mt-2 line-clamp-1 max-w-2xl text-[#5c432a] sm:mt-3 ${isKiosk ? "text-base leading-6" : "text-xs leading-5 sm:text-sm sm:leading-6"}`}>{menuData.restaurant.address}</p>
                 </div>
-                <div className="hidden min-w-28 rounded-2xl border border-white/12 bg-white/10 p-3 text-center sm:grid">
-                  <span className="text-xs font-semibold uppercase text-[#bdd9d2]">Cart</span>
+                <div className="hidden min-w-28 rounded-2xl border border-[#b58d57]/45 bg-white/25 p-3 text-center sm:grid">
+                  <span className="text-xs font-semibold uppercase text-[#5c432a]">Cart</span>
                   <span className="mt-1 text-2xl font-semibold">{count}</span>
-                  <span className="text-xs text-[#bdd9d2]">items</span>
+                  <span className="text-xs text-[#5c432a]">items</span>
                 </div>
               </div>
               {!menuData.restaurant.isOpen ? (
@@ -503,9 +503,9 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                 </p>
               ) : (
                 <div className={`mt-5 hidden gap-2 sm:grid sm:grid-cols-3 ${isKiosk ? "text-lg" : "text-sm"}`}>
-                  <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">No app needed</div>
-                  <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">Order number</div>
-                  <div className="rounded-2xl bg-white/10 p-3 text-[#edf7f3]">Pay at counter</div>
+                  <div className="rounded-2xl bg-white/25 p-3 text-[#3f3020]">No app needed</div>
+                  <div className="rounded-2xl bg-white/25 p-3 text-[#3f3020]">Order number</div>
+                  <div className="rounded-2xl bg-white/25 p-3 text-[#3f3020]">Pay at counter</div>
                 </div>
               )}
             </div>
@@ -539,7 +539,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                           <p className={`mt-1 line-clamp-2 text-[#65756f] sm:mt-2 ${isKiosk ? "text-base leading-7" : "text-xs leading-5 sm:text-sm sm:leading-6"}`}>{item.description}</p>
                           <div className="mt-auto flex items-center justify-between gap-3 pt-2 sm:pt-3">
                             <p className={`font-semibold text-teal-800 ${isKiosk ? "text-xl" : ""}`}>{formatMoney(item.priceCents, menuData.restaurant.currency)}</p>
-                            <span className={`grid shrink-0 place-items-center rounded-full bg-[#b42318] font-semibold text-white transition group-hover:bg-[#b42318] ${isKiosk ? "size-14 text-2xl" : "size-9 text-lg sm:size-10"}`}>
+                            <span className={`grid shrink-0 place-items-center rounded-full bg-[#8a5a2b] font-semibold text-white transition group-hover:bg-[#70451f] ${isKiosk ? "size-14 text-2xl" : "size-9 text-lg sm:size-10"}`}>
                               +
                             </span>
                           </div>
@@ -678,7 +678,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <button
-                className="min-h-16 flex-1 rounded-2xl bg-[#b42318] px-6 text-xl font-semibold text-white"
+                className="min-h-16 flex-1 rounded-2xl bg-[#8a5a2b] px-6 text-xl font-semibold text-white"
                 onClick={() => setIdleWarningVisible(false)}
               >
                 Continue ordering
@@ -832,12 +832,12 @@ function CartPanel({
         </p>
       ) : null}
 
-      <div className={`mt-3 bg-[#b42318] text-white sm:mt-4 ${isKiosk ? "rounded-3xl p-5" : "rounded-xl p-3 sm:rounded-2xl sm:p-4"}`}>
+      <div className={`mt-3 bg-[#d7b98a] text-[#2f2418] sm:mt-4 ${isKiosk ? "rounded-3xl p-5" : "rounded-xl p-3 sm:rounded-2xl sm:p-4"}`}>
         <div className="flex items-center justify-between gap-3">
           <span className={`font-semibold ${isKiosk ? "text-xl" : ""}`}>Total</span>
           <span className={`font-semibold ${isKiosk ? "text-4xl" : "text-xl sm:text-2xl"}`}>{formatMoney(totalCents, currency)}</span>
         </div>
-        <p className={`mt-1.5 leading-5 text-[#bdd9d2] sm:mt-2 ${isKiosk ? "text-base" : "text-xs sm:text-sm"}`}>Payment is made at the counter. The kitchen starts after cashier confirms payment.</p>
+        <p className={`mt-1.5 leading-5 text-[#5c432a] sm:mt-2 ${isKiosk ? "text-base" : "text-xs sm:text-sm"}`}>Payment is made at the counter. The kitchen starts after cashier confirms payment.</p>
       </div>
       <Button className={`mt-4 w-full rounded-xl ${isKiosk ? "min-h-16 text-xl" : ""}`} disabled={!cart.length || isPending || hasUnavailableItems || !restaurantOpen} onClick={onPlaceOrder}>
         {isPending ? "Placing order..." : "Place order"}
@@ -887,19 +887,19 @@ function KioskStartScreen({
 }) {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f4ed] p-8 text-[#182522]">
-      <section className="grid w-full max-w-6xl gap-8 overflow-hidden rounded-[2rem] border border-[#e0ddd4] bg-[#b42318] p-10 text-white shadow-[0_28px_90px_rgba(180,35,24,0.2)] lg:grid-cols-[1fr_360px] lg:p-14">
+      <section className="grid w-full max-w-6xl gap-8 overflow-hidden rounded-[2rem] border border-[#c9a46f] bg-[#d7b98a] p-10 text-[#2f2418] shadow-[0_28px_90px_rgba(138,91,43,0.2)] lg:grid-cols-[1fr_360px] lg:p-14">
         <div className="flex min-h-[560px] flex-col justify-between">
           <div>
-            <p className="text-lg font-bold uppercase tracking-[0.16em] text-teal-200">OrderKo.com kiosk</p>
+            <p className="text-lg font-bold uppercase tracking-[0.16em] text-[#5c432a]">OrderKo.com kiosk</p>
             <h1 className="mt-6 text-7xl font-semibold leading-none">{restaurant.name}</h1>
-            <p className="mt-6 max-w-3xl text-2xl leading-10 text-[#d7e4de]">{restaurant.description}</p>
-            <p className="mt-4 max-w-3xl text-xl leading-8 text-[#aebdb7]">{restaurant.address}</p>
+            <p className="mt-6 max-w-3xl text-2xl leading-10 text-[#3f3020]">{restaurant.description}</p>
+            <p className="mt-4 max-w-3xl text-xl leading-8 text-[#5c432a]">{restaurant.address}</p>
           </div>
 
-          <div className="mt-10 grid gap-4 text-xl text-[#edf7f3] md:grid-cols-3">
-            <div className="rounded-3xl bg-white/10 p-5">Tap items</div>
-            <div className="rounded-3xl bg-white/10 p-5">Get order number</div>
-            <div className="rounded-3xl bg-white/10 p-5">Pay at counter</div>
+          <div className="mt-10 grid gap-4 text-xl text-[#3f3020] md:grid-cols-3">
+            <div className="rounded-3xl bg-white/25 p-5">Tap items</div>
+            <div className="rounded-3xl bg-white/25 p-5">Get order number</div>
+            <div className="rounded-3xl bg-white/25 p-5">Pay at counter</div>
           </div>
         </div>
 
@@ -915,7 +915,7 @@ function KioskStartScreen({
             </p>
           ) : null}
           <button
-            className="mt-8 min-h-24 rounded-[1.5rem] bg-[#b42318] px-8 text-3xl font-semibold text-white shadow-[0_18px_50px_rgba(180,35,24,0.28)] transition active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-600"
+            className="mt-8 min-h-24 rounded-[1.5rem] bg-[#8a5a2b] px-8 text-3xl font-semibold text-white shadow-[0_18px_50px_rgba(138,91,43,0.28)] transition active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-600"
             disabled={!restaurant.isOpen}
             onClick={onStart}
           >
@@ -940,14 +940,14 @@ function KioskConfirmationScreen({
     <main className="grid min-h-screen place-items-center bg-[#f7f4ed] p-8 text-[#182522]">
       <section className="w-full max-w-6xl overflow-hidden rounded-[2rem] border border-[#dce7e2] bg-white shadow-[0_28px_90px_rgba(28,39,35,0.14)]">
         <div className="grid gap-0 lg:grid-cols-[1fr_420px]">
-          <div className="bg-[#b42318] p-10 text-white lg:p-14">
-            <p className="text-lg font-bold uppercase tracking-[0.16em] text-teal-100">Order placed</p>
+          <div className="bg-[#d7b98a] p-10 text-[#2f2418] lg:p-14">
+            <p className="text-lg font-bold uppercase tracking-[0.16em] text-[#5c432a]">Order placed</p>
             <h1 className="mt-6 text-8xl font-semibold leading-none">#{confirmation.orderNumber}</h1>
             <p className="mt-6 text-3xl font-semibold">Please proceed to the counter to pay.</p>
-            <p className="mt-4 max-w-3xl text-xl leading-8 text-teal-50">
+            <p className="mt-4 max-w-3xl text-xl leading-8 text-[#3f3020]">
               Show this number to the cashier. The kitchen starts after payment is confirmed.
             </p>
-            <div className="mt-8 rounded-3xl bg-white/12 p-5 text-xl text-teal-50">
+            <div className="mt-8 rounded-3xl bg-white/25 p-5 text-xl text-[#3f3020]">
               This kiosk resets automatically in {secondsRemaining} seconds.
             </div>
           </div>
@@ -979,7 +979,7 @@ function KioskConfirmationScreen({
             </div>
 
             <button
-              className="min-h-20 rounded-[1.35rem] bg-[#b42318] px-6 text-2xl font-semibold text-white"
+              className="min-h-20 rounded-[1.35rem] bg-[#8a5a2b] px-6 text-2xl font-semibold text-white"
               onClick={onNewOrder}
             >
               New Order

@@ -18,7 +18,7 @@ export async function generateMetadata({
 }
 
 export const viewport: Viewport = {
-  themeColor: "#b42318",
+  themeColor: "#d7b98a",
 };
 
 export default function KioskLayout({

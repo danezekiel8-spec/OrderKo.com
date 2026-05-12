@@ -19,7 +19,7 @@ export async function GET(
     display: "fullscreen",
     orientation: "any",
     background_color: "#f7f4ed",
-    theme_color: "#b42318",
+    theme_color: "#d7b98a",
     categories: ["food", "business", "productivity"],
     icons: [
       {
