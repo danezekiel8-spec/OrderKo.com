@@ -16,10 +16,19 @@ type CartItem = {
   selectedOptions: SelectedOptionDto[];
 };
 
+type KioskConfirmation = {
+  orderCode: string;
+  orderNumber: number;
+  trackingUrl: string;
+  qrDataUrl: string;
+  qrError: string;
+};
+
 const cartStoragePrefix = "orderko-cart:";
 const kioskCartStoragePrefix = "orderko-kiosk-cart:";
 const kioskWarningAfterMs = 90000;
 const kioskResetAfterMs = 120000;
+const kioskConfirmationResetMs = 30000;
 
 function itemKey(itemId: string, selectedOptions: SelectedOptionDto[], note: string) {
   return `${itemId}:${JSON.stringify(selectedOptions)}:${note.trim()}`;
@@ -43,6 +52,9 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
   const [error, setError] = useState("");
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [kioskStarted, setKioskStarted] = useState(!isKiosk);
+  const [kioskConfirmation, setKioskConfirmation] = useState<KioskConfirmation | null>(null);
+  const [kioskConfirmationSeconds, setKioskConfirmationSeconds] = useState(kioskConfirmationResetMs / 1000);
   const [idleWarningVisible, setIdleWarningVisible] = useState(false);
   const [idleSecondsRemaining, setIdleSecondsRemaining] = useState(30);
   const [isPending, startTransition] = useTransition();
@@ -66,8 +78,9 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
   );
   const hasBlockingUnavailableItem = unavailableItemIds.length > 0;
   const orderBusy = isPending || isSubmitting;
+  const kioskTrackingUrl = kioskConfirmation?.trackingUrl ?? "";
   const hasActiveKioskSession = Boolean(
-    cart.length || customerName.trim() || customerNote.trim() || selectedItem || mobileCartOpen || error,
+    kioskStarted || cart.length || customerName.trim() || customerNote.trim() || selectedItem || mobileCartOpen || error,
   );
 
   const readSavedCart = useCallback(
@@ -93,6 +106,9 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
     setError("");
     setSelectedItem(null);
     setMobileCartOpen(false);
+    setKioskStarted(!isKiosk);
+    setKioskConfirmation(null);
+    setKioskConfirmationSeconds(kioskConfirmationResetMs / 1000);
     setIdleWarningVisible(false);
     setIdleSecondsRemaining(30);
     submissionKeyRef.current = null;
@@ -101,7 +117,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
     } catch {
       // Kiosk reset still works even if browser storage is unavailable.
     }
-  }, [cartStorageKey, removeSavedCart]);
+  }, [cartStorageKey, isKiosk, removeSavedCart]);
 
   function normalizeCartItem(savedItem: CartItem) {
     const menuItem = menuItemById.get(savedItem.menuItemId);
@@ -138,6 +154,10 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
     let canceled = false;
     const timer = window.setTimeout(() => {
       try {
+        if (isKiosk) {
+          removeSavedCart(cartStorageKey);
+          return;
+        }
         const saved = readSavedCart(cartStorageKey);
         if (saved) {
           const parsed = JSON.parse(saved) as {
@@ -165,13 +185,13 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
     };
     // Restore once per restaurant slug; later menu refreshes should not overwrite the live cart.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartStorageKey, readSavedCart, removeSavedCart]);
+  }, [cartStorageKey, isKiosk, readSavedCart, removeSavedCart]);
 
   useEffect(() => {
     if (!cartLoaded) return;
+    if (isKiosk) return;
     try {
-      const storage = isKiosk ? window.sessionStorage : window.localStorage;
-      storage.setItem(
+      window.localStorage.setItem(
         cartStorageKey,
         JSON.stringify({
           cart,
@@ -184,6 +204,58 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
       // Local storage is a convenience for refresh recovery; ordering still works without it.
     }
   }, [cart, cartLoaded, cartStorageKey, customerName, customerNote, isKiosk]);
+
+  useEffect(() => {
+    if (!isKiosk || !kioskTrackingUrl) return;
+    let canceled = false;
+
+    async function buildTrackingQr() {
+      try {
+        const QRCode = await import("qrcode");
+        const dataUrl = await QRCode.toDataURL(kioskTrackingUrl, {
+          errorCorrectionLevel: "M",
+          margin: 1,
+          width: 260,
+          color: {
+            dark: "#13201d",
+            light: "#ffffff",
+          },
+        });
+        if (!canceled) {
+          setKioskConfirmation((current) =>
+            current && current.trackingUrl === kioskTrackingUrl ? { ...current, qrDataUrl: dataUrl, qrError: "" } : current,
+          );
+        }
+      } catch {
+        if (!canceled) {
+          setKioskConfirmation((current) =>
+            current && current.trackingUrl === kioskTrackingUrl
+              ? { ...current, qrError: "Tracking QR could not be generated. Use the order number at the counter." }
+              : current,
+          );
+        }
+      }
+    }
+
+    void buildTrackingQr();
+    return () => {
+      canceled = true;
+    };
+  }, [isKiosk, kioskTrackingUrl]);
+
+  useEffect(() => {
+    if (!isKiosk || !kioskConfirmation) return;
+
+    const countdown = window.setInterval(() => {
+      setKioskConfirmationSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+    const resetTimer = window.setTimeout(resetSession, kioskConfirmationResetMs);
+
+    return () => {
+      window.clearInterval(countdown);
+      window.clearTimeout(resetTimer);
+    };
+  }, [isKiosk, kioskConfirmation, resetSession]);
 
   useEffect(() => {
     if (!isKiosk || !hasActiveKioskSession || orderBusy) {
@@ -298,7 +370,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
           body: JSON.stringify(payload),
         });
         const result = (await response.json()) as {
-          order?: { orderCode: string; customerAccessToken?: string | null };
+          order?: { orderCode: string; orderNumber: number; customerAccessToken?: string | null };
           error?: string;
         };
         if (!response.ok || !result.order) {
@@ -312,14 +384,52 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
         submissionKeyRef.current = null;
         removeSavedCart(cartStorageKey);
         const tokenParam = result.order.customerAccessToken ? `?t=${encodeURIComponent(result.order.customerAccessToken)}` : "";
-        const modeParam = isKiosk ? `${tokenParam ? "&" : "?"}mode=kiosk` : "";
-        router.push(`/order/${result.order.orderCode}${tokenParam}${modeParam}`);
+        const trackingPath = `/order/${result.order.orderCode}${tokenParam}`;
+        if (isKiosk) {
+          setSelectedItem(null);
+          setMobileCartOpen(false);
+          setError("");
+          setKioskStarted(false);
+          setKioskConfirmationSeconds(kioskConfirmationResetMs / 1000);
+          setKioskConfirmation({
+            orderCode: result.order.orderCode,
+            orderNumber: result.order.orderNumber,
+            trackingUrl: `${window.location.origin}${trackingPath}`,
+            qrDataUrl: "",
+            qrError: "",
+          });
+          return;
+        }
+        router.push(trackingPath);
       } catch {
         setError("Connection dropped while placing the order. Your cart is still saved. Please retry once, then check with the counter before trying again.");
       } finally {
         setIsSubmitting(false);
       }
     });
+  }
+
+  if (isKiosk && kioskConfirmation) {
+    return (
+      <KioskConfirmationScreen
+        confirmation={kioskConfirmation}
+        secondsRemaining={kioskConfirmationSeconds}
+        onNewOrder={resetSession}
+      />
+    );
+  }
+
+  if (isKiosk && !kioskStarted) {
+    return (
+      <KioskStartScreen
+        restaurant={menuData.restaurant}
+        onStart={() => {
+          setKioskStarted(true);
+          setKioskConfirmation(null);
+          setKioskConfirmationSeconds(kioskConfirmationResetMs / 1000);
+        }}
+      />
+    );
   }
 
   return (
@@ -765,6 +875,119 @@ function MenuImage({
       onError={() => setFailed(true)}
       className={`${className} object-cover`}
     />
+  );
+}
+
+function KioskStartScreen({
+  restaurant,
+  onStart,
+}: {
+  restaurant: MenuResponse["restaurant"];
+  onStart: () => void;
+}) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-[#f7f4ed] p-8 text-[#182522]">
+      <section className="grid w-full max-w-6xl gap-8 overflow-hidden rounded-[2rem] border border-[#e0ddd4] bg-[#13201d] p-10 text-white shadow-[0_28px_90px_rgba(19,32,29,0.2)] lg:grid-cols-[1fr_360px] lg:p-14">
+        <div className="flex min-h-[560px] flex-col justify-between">
+          <div>
+            <p className="text-lg font-bold uppercase tracking-[0.16em] text-teal-200">OrderKo.com kiosk</p>
+            <h1 className="mt-6 text-7xl font-semibold leading-none">{restaurant.name}</h1>
+            <p className="mt-6 max-w-3xl text-2xl leading-10 text-[#d7e4de]">{restaurant.description}</p>
+            <p className="mt-4 max-w-3xl text-xl leading-8 text-[#aebdb7]">{restaurant.address}</p>
+          </div>
+
+          <div className="mt-10 grid gap-4 text-xl text-[#edf7f3] md:grid-cols-3">
+            <div className="rounded-3xl bg-white/10 p-5">Tap items</div>
+            <div className="rounded-3xl bg-white/10 p-5">Get order number</div>
+            <div className="rounded-3xl bg-white/10 p-5">Pay at counter</div>
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-center rounded-[1.75rem] bg-white p-8 text-[#182522]">
+          <p className="text-lg font-semibold text-teal-700">{restaurant.isOpen ? "Ready to order" : "Ordering paused"}</p>
+          <h2 className="mt-3 text-4xl font-semibold leading-tight">Start your order here</h2>
+          <p className="mt-4 text-xl leading-8 text-[#65756f]">
+            Place your order on this kiosk, then take your order number to the counter to pay.
+          </p>
+          {!restaurant.isOpen ? (
+            <p className="mt-6 rounded-2xl bg-rose-50 p-4 text-lg leading-7 text-rose-700">
+              This restaurant is currently closed for ordering. Please ask the counter for help.
+            </p>
+          ) : null}
+          <button
+            className="mt-8 min-h-24 rounded-[1.5rem] bg-teal-700 px-8 text-3xl font-semibold text-white shadow-[0_18px_50px_rgba(15,118,110,0.28)] transition active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-600"
+            disabled={!restaurant.isOpen}
+            onClick={onStart}
+          >
+            Start Order
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function KioskConfirmationScreen({
+  confirmation,
+  secondsRemaining,
+  onNewOrder,
+}: {
+  confirmation: KioskConfirmation;
+  secondsRemaining: number;
+  onNewOrder: () => void;
+}) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-[#f7f4ed] p-8 text-[#182522]">
+      <section className="w-full max-w-6xl overflow-hidden rounded-[2rem] border border-[#dce7e2] bg-white shadow-[0_28px_90px_rgba(28,39,35,0.14)]">
+        <div className="grid gap-0 lg:grid-cols-[1fr_420px]">
+          <div className="bg-teal-700 p-10 text-white lg:p-14">
+            <p className="text-lg font-bold uppercase tracking-[0.16em] text-teal-100">Order placed</p>
+            <h1 className="mt-6 text-8xl font-semibold leading-none">#{confirmation.orderNumber}</h1>
+            <p className="mt-6 text-3xl font-semibold">Please proceed to the counter to pay.</p>
+            <p className="mt-4 max-w-3xl text-xl leading-8 text-teal-50">
+              Show this number to the cashier. The kitchen starts after payment is confirmed.
+            </p>
+            <div className="mt-8 rounded-3xl bg-white/12 p-5 text-xl text-teal-50">
+              This kiosk resets automatically in {secondsRemaining} seconds.
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-between gap-6 p-8 lg:p-10">
+            <div>
+              <h2 className="text-3xl font-semibold">Track on your phone</h2>
+              <p className="mt-3 text-lg leading-7 text-[#65756f]">
+                Scan this QR if you want to follow your order status after leaving the kiosk.
+              </p>
+              <div className="mt-6 grid min-h-[280px] place-items-center rounded-[1.5rem] border border-[#e0ddd4] bg-[#fbfaf7] p-5">
+                {confirmation.qrDataUrl ? (
+                  // QR data URL is generated locally from the existing protected order status URL.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={confirmation.qrDataUrl} alt="Scan to track this order" className="size-64 rounded-2xl bg-white p-2" />
+                ) : (
+                  <p className="text-center text-lg leading-7 text-[#65756f]">
+                    {confirmation.qrError || "Preparing tracking QR..."}
+                  </p>
+                )}
+              </div>
+              {confirmation.qrError ? <p className="mt-3 text-sm leading-6 text-rose-700">{confirmation.qrError}</p> : null}
+              <a
+                href={confirmation.trackingUrl}
+                className="mt-4 flex min-h-14 items-center justify-center rounded-2xl border border-[#d9d4ca] bg-white px-5 text-lg font-semibold text-[#182522]"
+              >
+                Track Order
+              </a>
+            </div>
+
+            <button
+              className="min-h-20 rounded-[1.35rem] bg-[#13201d] px-6 text-2xl font-semibold text-white"
+              onClick={onNewOrder}
+            >
+              New Order
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }
 
