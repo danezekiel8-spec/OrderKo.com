@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import type { MenuItemDto, MenuResponse, SelectedOptionDto } from "@/types/orderko";
 import { Button, Badge } from "@/components/ui";
+
+const G_CAFE_LOGO_SRC = "/assets/g-cafe-logo.jpg";
+const KIOSK_HERO_IMAGE_SRC = "/assets/rustic-cafe-hero.jpg";
 
 type CartItem = {
   key: string;
@@ -38,11 +42,16 @@ function cartCountLabel(count: number) {
   return `${count} item${count === 1 ? "" : "s"}`;
 }
 
+function getPilotRestaurantLogoSrc(slug: string) {
+  return slug === "g-cafe" ? G_CAFE_LOGO_SRC : undefined;
+}
+
 export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; mode?: "customer" | "kiosk" }) {
   const router = useRouter();
   const isKiosk = mode === "kiosk";
   const cartStorageKey = `${isKiosk ? kioskCartStoragePrefix : cartStoragePrefix}${data.restaurant.slug}`;
   const [menuData, setMenuData] = useState(data);
+  const restaurantLogoSrc = getPilotRestaurantLogoSrc(menuData.restaurant.slug);
   const [activeCategory, setActiveCategory] = useState(data.categories[0]?.id ?? "");
   const [selectedItem, setSelectedItem] = useState<MenuItemDto | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -423,6 +432,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
     return (
       <KioskStartScreen
         restaurant={menuData.restaurant}
+        logoSrc={restaurantLogoSrc}
         onStart={() => {
           setKioskStarted(true);
           setKioskConfirmation(null);
@@ -485,7 +495,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
             <div className="p-4 sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
-                  <RestaurantLogoSlot name={menuData.restaurant.name} variant={isKiosk ? "menuKiosk" : "menu"} />
+                  <RestaurantLogoSlot logoSrc={restaurantLogoSrc} name={menuData.restaurant.name} variant={isKiosk ? "menuKiosk" : "menu"} />
                 </div>
                 <div className="hidden min-w-28 rounded-2xl border border-[#b58d57]/45 bg-white/25 p-3 text-center sm:grid">
                   <span className="text-xs font-semibold uppercase text-[#5c432a]">Cart</span>
@@ -869,18 +879,29 @@ function MenuImage({
 
 function KioskStartScreen({
   restaurant,
+  logoSrc,
   onStart,
 }: {
   restaurant: MenuResponse["restaurant"];
+  logoSrc?: string;
   onStart: () => void;
 }) {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f4ed] p-8 text-[#182522]">
-      <section className="flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col items-center justify-center gap-10 overflow-hidden rounded-[2rem] border border-[#c9a46f] bg-[#d7b98a] p-8 text-center text-[#2f2418] shadow-[0_28px_90px_rgba(138,91,43,0.2)] sm:p-12 lg:p-16">
-        <RestaurantLogoSlot name={restaurant.name} variant="kioskWelcome" />
+      <section className="relative isolate flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col items-center justify-center gap-8 overflow-hidden rounded-[2rem] border border-[#c9a46f] bg-[#2f2418] p-8 text-center text-white shadow-[0_28px_90px_rgba(28,39,35,0.2)] sm:p-12 lg:p-16">
+        <Image
+          src={KIOSK_HERO_IMAGE_SRC}
+          alt=""
+          fill
+          priority
+          sizes="(max-width: 1200px) 100vw, 1152px"
+          className="absolute inset-0 -z-20 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(21,16,11,0.38),rgba(21,16,11,0.72))]" />
+        <RestaurantLogoSlot logoSrc={logoSrc} name={restaurant.name} variant="kioskWelcome" />
 
         <div className="w-full max-w-3xl">
-          <h2 className="text-5xl font-semibold leading-tight sm:text-7xl">Start your order here</h2>
+          <h2 className="text-3xl font-semibold leading-tight sm:text-5xl">Start your order here</h2>
           {!restaurant.isOpen ? (
             <p className="mx-auto mt-8 max-w-2xl rounded-2xl bg-rose-50 p-4 text-lg leading-7 text-rose-700">
               This restaurant is currently closed for ordering. Please ask the counter for help.
@@ -900,22 +921,27 @@ function KioskStartScreen({
 }
 
 function RestaurantLogoSlot({
+  logoSrc,
   name,
   variant,
 }: {
+  logoSrc?: string;
   name: string;
   variant: "menu" | "menuKiosk" | "kioskWelcome";
 }) {
   const classes = {
-    menu: "min-h-16 max-w-full rounded-2xl border border-[#b58d57]/35 bg-white/20 px-4 py-3 text-2xl sm:text-4xl",
-    menuKiosk: "min-h-24 max-w-3xl rounded-[1.5rem] border border-[#b58d57]/35 bg-white/20 px-6 py-5 text-5xl",
-    kioskWelcome: "min-h-32 w-full max-w-3xl rounded-[2rem] border border-[#b58d57]/40 bg-white/20 px-8 py-8 text-6xl sm:text-8xl",
+    menu: "min-h-16 max-w-full rounded-2xl border border-[#b58d57]/35 bg-white/45 px-4 py-3 text-2xl sm:text-4xl",
+    menuKiosk: "min-h-24 max-w-3xl rounded-[1.5rem] border border-[#b58d57]/35 bg-white/45 px-6 py-5 text-5xl",
+    kioskWelcome: "min-h-28 w-full max-w-lg rounded-[2rem] border border-white/30 bg-white/90 px-8 py-6 text-5xl text-[#2f2418] shadow-[0_20px_60px_rgba(21,16,11,0.24)] sm:min-h-36 sm:max-w-2xl sm:text-7xl",
   } satisfies Record<typeof variant, string>;
 
   return (
     <div className={`flex items-center justify-center ${classes[variant]}`} aria-label={`${name} logo placeholder`}>
-      {/* Replace this fallback text with a restaurant logo image when logo uploads are added. */}
-      <span className="break-words font-semibold leading-none">{name}</span>
+      {logoSrc ? (
+        <Image src={logoSrc} alt={`${name} logo`} width={420} height={240} className="max-h-24 w-auto max-w-full object-contain sm:max-h-32" />
+      ) : (
+        <span className="break-words font-semibold leading-none">{name}</span>
+      )}
     </div>
   );
 }
@@ -963,12 +989,6 @@ function KioskConfirmationScreen({
                 )}
               </div>
               {confirmation.qrError ? <p className="mt-3 text-sm leading-6 text-rose-700">{confirmation.qrError}</p> : null}
-              <a
-                href={confirmation.trackingUrl}
-                className="mt-4 flex min-h-14 items-center justify-center rounded-2xl border border-[#d9d4ca] bg-white px-5 text-lg font-semibold text-[#182522]"
-              >
-                Track Order
-              </a>
             </div>
 
             <button
