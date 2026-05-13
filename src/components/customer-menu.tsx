@@ -925,9 +925,10 @@ function KioskStartScreen({
             </p>
           ) : null}
           <button
-            className="mt-2 min-h-28 w-full max-w-xl animate-[kioskCtaPulse_2.4s_ease-in-out_infinite] rounded-[1.5rem] bg-[#b42318] px-8 py-5 text-4xl font-semibold text-white shadow-[0_18px_50px_rgba(180,35,24,0.34)] transition hover:bg-[#981b12] active:scale-[0.99] disabled:animate-none disabled:bg-slate-300 disabled:text-slate-600"
+            className="mt-2 min-h-32 w-full max-w-xl animate-[kioskCtaPulse_2.4s_ease-in-out_infinite] rounded-[1.5rem] bg-[#b42318] px-8 py-5 text-6xl font-bold text-white shadow-[0_18px_50px_rgba(180,35,24,0.34)] transition hover:bg-[#981b12] active:scale-[0.99] disabled:animate-none disabled:bg-slate-300 disabled:text-slate-600"
             disabled={!restaurant.isOpen}
             onClick={onStart}
+            style={{ fontSize: "3rem", fontWeight: 700, lineHeight: 1.1 }}
           >
             {kioskCopy.startButton}
           </button>
