@@ -16,6 +16,8 @@ const kioskCopy = {
   addInstruction: "Tap + to add items to your order.",
 };
 
+const kioskRedActionClass = "!bg-[#b42318] !text-white hover:!bg-[#981b12] disabled:!bg-slate-300 disabled:!text-slate-600";
+
 type CartItem = {
   key: string;
   menuItemId: string;
@@ -460,15 +462,17 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
             <div className={`flex items-center gap-2 ${isKiosk ? "gap-3" : ""}`}>
               {isKiosk && hasActiveKioskSession ? (
                 <button
-                  className="min-h-14 rounded-2xl border border-[#d9d4ca] bg-white px-6 text-lg font-semibold text-[#182522] shadow-sm transition active:scale-[0.98]"
+                  className="min-h-14 rounded-full bg-[#b42318] px-7 text-lg font-semibold text-white shadow-sm transition hover:bg-[#981b12] active:scale-[0.98]"
                   onClick={resetSession}
                 >
                   Start over
                 </button>
               ) : null}
-              <Badge tone={menuData.restaurant.isOpen ? "good" : "danger"}>
-                {menuData.restaurant.isOpen ? "Open now" : "Closed"}
-              </Badge>
+              {!isKiosk ? (
+                <Badge tone={menuData.restaurant.isOpen ? "good" : "danger"}>
+                  {menuData.restaurant.isOpen ? "Open now" : "Closed"}
+                </Badge>
+              ) : null}
             </div>
           </div>
           <div className="relative -mx-3 sm:-mx-4">
@@ -550,7 +554,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                           <p className={`mt-1 line-clamp-2 text-[#65756f] sm:mt-2 ${isKiosk ? "text-lg leading-8" : "text-xs leading-5 sm:text-sm sm:leading-6"}`}>{item.description}</p>
                           <div className="mt-auto flex items-center justify-between gap-3 pt-2 sm:pt-3">
                             <p className={`font-semibold text-teal-800 ${isKiosk ? "text-2xl" : ""}`}>{formatMoney(item.priceCents, menuData.restaurant.currency)}</p>
-                            <span className={`grid shrink-0 place-items-center rounded-full bg-[#8a5a2b] font-semibold text-white transition group-hover:bg-[#70451f] ${isKiosk ? "size-16 text-3xl" : "size-9 text-lg sm:size-10"}`}>
+                            <span className={`grid shrink-0 place-items-center rounded-full font-semibold text-white transition ${isKiosk ? "size-16 bg-[#b42318] text-3xl group-hover:bg-[#981b12]" : "size-9 bg-[#8a5a2b] text-lg group-hover:bg-[#70451f] sm:size-10"}`}>
                               +
                             </span>
                           </div>
@@ -607,7 +611,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
             </div>
             <span className={`font-semibold ${isKiosk ? "text-3xl" : "text-lg sm:text-xl"}`}>{formatMoney(totalCents, menuData.restaurant.currency)}</span>
           </div>
-          <Button className={`w-full rounded-xl ${isKiosk ? "min-h-16 text-xl" : ""}`} disabled={!cart.length || !cartLoaded} onClick={() => setMobileCartOpen(true)}>
+          <Button className={`w-full rounded-xl ${isKiosk ? `min-h-16 text-xl ${kioskRedActionClass}` : ""}`} disabled={!cart.length || !cartLoaded} onClick={() => setMobileCartOpen(true)}>
             {cart.length ? "Review order" : "Cart is empty"}
           </Button>
         </div>
@@ -850,7 +854,7 @@ function CartPanel({
         </div>
         <p className={`mt-1.5 leading-5 text-[#5c432a] sm:mt-2 ${isKiosk ? "text-base" : "text-xs sm:text-sm"}`}>Payment is made at the counter. The kitchen starts after cashier confirms payment.</p>
       </div>
-      <Button className={`mt-4 w-full rounded-xl ${isKiosk ? "min-h-16 text-xl" : ""}`} disabled={!cart.length || isPending || hasUnavailableItems || !restaurantOpen} onClick={onPlaceOrder}>
+      <Button className={`mt-4 w-full rounded-xl ${isKiosk ? `min-h-16 text-xl ${kioskRedActionClass}` : ""}`} disabled={!cart.length || isPending || hasUnavailableItems || !restaurantOpen} onClick={onPlaceOrder}>
         {isPending ? "Placing order..." : "Place order"}
       </Button>
     </div>
@@ -915,7 +919,7 @@ function KioskStartScreen({
           {logoSrc ? (
             <Image src={logoSrc} alt={`${restaurant.name} logo`} width={120} height={120} className="size-20 rounded-2xl bg-white object-contain p-2 sm:size-24" priority />
           ) : null}
-          <h1 className="text-5xl font-semibold leading-tight sm:text-7xl">{kioskCopy.welcomeHeading}</h1>
+          <h1 className="wonder-glow-style text-5xl font-semibold leading-tight sm:text-7xl">{kioskCopy.welcomeHeading}</h1>
         </div>
 
         <div className="w-full max-w-3xl">
@@ -925,7 +929,7 @@ function KioskStartScreen({
             </p>
           ) : null}
           <button
-            className="mt-2 min-h-32 w-full max-w-xl animate-[kioskCtaPulse_2.4s_ease-in-out_infinite] rounded-[1.5rem] bg-[#b42318] px-8 py-5 text-6xl font-bold text-white shadow-[0_18px_50px_rgba(180,35,24,0.34)] transition hover:bg-[#981b12] active:scale-[0.99] disabled:animate-none disabled:bg-slate-300 disabled:text-slate-600"
+            className="kiosk-cta-pulse mt-10 min-h-24 w-full max-w-md rounded-full bg-[#b42318] px-8 py-4 text-6xl font-bold text-white shadow-[0_18px_50px_rgba(180,35,24,0.34)] transition hover:bg-[#981b12] active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-600"
             disabled={!restaurant.isOpen}
             onClick={onStart}
             style={{ fontSize: "3rem", fontWeight: 700, lineHeight: 1.1 }}
@@ -1010,10 +1014,10 @@ function KioskConfirmationScreen({
             </div>
 
             <button
-              className="min-h-20 rounded-[1.35rem] bg-[#8a5a2b] px-6 text-2xl font-semibold text-white"
-              onClick={onNewOrder}
-            >
-              New Order
+            className="min-h-20 rounded-full bg-[#b42318] px-6 text-2xl font-semibold text-white transition hover:bg-[#981b12] active:scale-[0.99]"
+            onClick={onNewOrder}
+          >
+            New Order
             </button>
           </div>
         </div>
@@ -1153,7 +1157,7 @@ function ItemModal({
             <span className={`font-semibold ${isKiosk ? "text-4xl" : "text-xl"}`}>{formatMoney(unitPriceCents * quantity, currency)}</span>
           </div>
           <Button
-            className={`w-full rounded-xl ${isKiosk ? "min-h-16 text-xl" : ""}`}
+            className={`w-full rounded-xl ${isKiosk ? `min-h-16 text-xl ${kioskRedActionClass}` : ""}`}
             disabled={missingRequired}
             onClick={() =>
               onAdd({
