@@ -48,7 +48,11 @@ export default async function AdminPage() {
         currency: restaurant.currency,
         isOpen: restaurant.isOpen,
       }}
-      categories={restaurant.categories.map((category) => ({ id: category.id, name: category.name }))}
+      categories={restaurant.categories.map((category) => ({
+        id: category.id,
+        name: category.name,
+        sortOrder: category.sortOrder,
+      }))}
       menuItems={restaurant.menuItems.map((item) => ({
         id: item.id,
         categoryId: item.categoryId,

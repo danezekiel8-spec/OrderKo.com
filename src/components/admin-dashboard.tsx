@@ -5,7 +5,7 @@ import { Button, Badge } from "@/components/ui";
 import { formatMoney } from "@/lib/money";
 import { LogoutButton } from "@/components/logout-button";
 
-type Category = { id: string; name: string };
+type Category = { id: string; name: string; sortOrder: number };
 type AdminMenuItem = {
   id: string;
   categoryId: string;
@@ -46,6 +46,7 @@ export function AdminDashboard({
   qrBaseUrl: string | null;
 }) {
   const [settings, setSettings] = useState(restaurant);
+  const [categoryList, setCategoryList] = useState(categories);
   const [items, setItems] = useState(menuItems);
   const [editing, setEditing] = useState<AdminMenuItem | null>(null);
   const [error, setError] = useState("");
@@ -56,6 +57,21 @@ export function AdminDashboard({
   const [formVersion, setFormVersion] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [pending, startTransition] = useTransition();
+  const sortedCategories = useMemo(
+    () => [...categoryList].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
+    [categoryList],
+  );
+  const categoryById = useMemo(
+    () => new Map(categoryList.map((category) => [category.id, category])),
+    [categoryList],
+  );
+  const categoryItemCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      counts.set(item.categoryId, (counts.get(item.categoryId) ?? 0) + 1);
+    }
+    return counts;
+  }, [items]);
   const menuUrl = useMemo(() => {
     if (qrBaseUrl) return `${qrBaseUrl.replace(/\/$/, "")}/r/${settings.slug}`;
     if (typeof window === "undefined") return `/r/${settings.slug}`;
@@ -129,6 +145,10 @@ export function AdminDashboard({
       optionGroupsJson: String(formData.get("optionGroupsJson") ?? "[]"),
       isSoldOut: formData.get("isSoldOut") === "on",
     };
+    if (!payload.categoryId) {
+      setError("Add a category before saving a menu item.");
+      return;
+    }
 
     startTransition(async () => {
       const response = await fetch(editing ? `/api/admin/menu-items/${editing.id}` : "/api/admin/menu-items", {
@@ -314,6 +334,13 @@ export function AdminDashboard({
             </div>
           </section>
 
+          <div className="space-y-4">
+          <CategoryManager
+            categories={sortedCategories}
+            itemCounts={categoryItemCounts}
+            onCategoriesChange={setCategoryList}
+          />
+
           <form key={editing?.id ?? `new-${formVersion}`} action={save} className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
             <h2 className="text-xl font-semibold">{editing ? "Edit item" : "Add menu item"}</h2>
             {error ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
@@ -344,11 +371,12 @@ export function AdminDashboard({
                 Category
                 <select
                   name="categoryId"
-                  defaultValue={editing?.categoryId ?? categories[0]?.id}
+                  defaultValue={editing?.categoryId ?? sortedCategories[0]?.id ?? ""}
                   className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3"
+                  disabled={!sortedCategories.length}
                   required
                 >
-                  {categories.map((category) => (
+                  {sortedCategories.map((category) => (
                     <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </select>
@@ -411,10 +439,11 @@ export function AdminDashboard({
               Sold out
             </label>
             <div className="mt-5 flex gap-2">
-              <Button disabled={pending || isUploading}>{pending ? "Saving..." : editing ? "Save changes" : "Add item"}</Button>
+              <Button disabled={pending || isUploading || !sortedCategories.length}>{pending ? "Saving..." : editing ? "Save changes" : "Add item"}</Button>
               {editing ? <Button type="button" variant="secondary" onClick={cancelEditing}>Cancel</Button> : null}
             </div>
           </form>
+          </div>
 
           <div className="space-y-4">
             <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
@@ -448,6 +477,7 @@ export function AdminDashboard({
                         <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold">{item.name}</h3>
+                          <Badge>{categoryById.get(item.categoryId)?.name ?? "Uncategorized"}</Badge>
                           {item.isSoldOut ? <Badge tone="danger">Sold out</Badge> : <Badge tone="good">Available</Badge>}
                         </div>
                         <p className="mt-1 text-sm leading-6 text-slate-500">{item.description}</p>
@@ -479,6 +509,182 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-2 text-3xl font-semibold">{value}</p>
     </div>
+  );
+}
+
+function CategoryManager({
+  categories,
+  itemCounts,
+  onCategoriesChange,
+}: {
+  categories: Category[];
+  itemCounts: Map<string, number>;
+  onCategoriesChange: (updater: (current: Category[]) => Category[]) => void;
+}) {
+  const [newName, setNewName] = useState("");
+  const [newSortOrder, setNewSortOrder] = useState(() =>
+    String(Math.max(0, ...categories.map((category) => category.sortOrder)) + 1),
+  );
+  const [categoryError, setCategoryError] = useState("");
+  const [categoryPending, startCategoryTransition] = useTransition();
+
+  function upsertSortedCategory(savedCategory: Category) {
+    onCategoriesChange((current) => {
+      const exists = current.some((category) => category.id === savedCategory.id);
+      const next = exists
+        ? current.map((category) => (category.id === savedCategory.id ? savedCategory : category))
+        : [...current, savedCategory];
+      return next.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+    });
+  }
+
+  function addCategory() {
+    setCategoryError("");
+    const payload = {
+      name: newName.trim(),
+      sortOrder: Math.round(Number(newSortOrder) || 0),
+    };
+
+    startCategoryTransition(async () => {
+      const response = await fetch("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = (await response.json()) as { category?: Category; error?: string };
+      if (!response.ok || !result.category) {
+        setCategoryError(result.error ?? "Could not add category.");
+        return;
+      }
+      upsertSortedCategory(result.category);
+      setNewName("");
+      setNewSortOrder(String(result.category.sortOrder + 1));
+    });
+  }
+
+  function saveCategory(id: string, formData: FormData) {
+    setCategoryError("");
+    const payload = {
+      name: String(formData.get("name") ?? "").trim(),
+      sortOrder: Math.round(Number(formData.get("sortOrder")) || 0),
+    };
+
+    startCategoryTransition(async () => {
+      const response = await fetch(`/api/admin/categories/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = (await response.json()) as { category?: Category; error?: string };
+      if (!response.ok || !result.category) {
+        setCategoryError(result.error ?? "Could not save category.");
+        return;
+      }
+      upsertSortedCategory(result.category);
+    });
+  }
+
+  function deleteCategory(category: Category) {
+    setCategoryError("");
+    const count = itemCounts.get(category.id) ?? 0;
+    if (count > 0) {
+      setCategoryError(`Move or delete ${count} menu item${count === 1 ? "" : "s"} before deleting ${category.name}.`);
+      return;
+    }
+    if (!window.confirm(`Delete ${category.name}?`)) return;
+
+    startCategoryTransition(async () => {
+      const response = await fetch(`/api/admin/categories/${category.id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as { error?: string } | null;
+        setCategoryError(result?.error ?? "Could not delete category.");
+        return;
+      }
+      onCategoriesChange((current) => current.filter((item) => item.id !== category.id));
+    });
+  }
+
+  return (
+    <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
+      <h2 className="text-xl font-semibold">Categories</h2>
+      <p className="mt-1 text-sm leading-6 text-slate-500">Add, rename, and reorder the groups customers see on the menu.</p>
+      {categoryError ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{categoryError}</p> : null}
+
+      <div className="mt-4 grid gap-3">
+        <div className="grid gap-2 rounded-lg bg-slate-50 p-3">
+          <label className="block text-sm font-semibold">
+            New category
+            <input
+              value={newName}
+              onChange={(event) => setNewName(event.target.value)}
+              className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
+              placeholder="Breakfast, Coffee, Specials"
+            />
+          </label>
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <label className="block text-sm font-semibold">
+              Sort
+              <input
+                type="number"
+                min="0"
+                value={newSortOrder}
+                onChange={(event) => setNewSortOrder(event.target.value)}
+                className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
+              />
+            </label>
+            <Button
+              type="button"
+              className="self-end"
+              disabled={categoryPending || newName.trim().length < 2}
+              onClick={addCategory}
+            >
+              Add
+            </Button>
+          </div>
+        </div>
+
+        {categories.map((category) => {
+          const count = itemCounts.get(category.id) ?? 0;
+          return (
+            <form key={category.id} action={(formData) => saveCategory(category.id, formData)} className="rounded-lg border border-slate-200 p-3">
+              <div className="grid gap-2 sm:grid-cols-[1fr_88px]">
+                <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  Name
+                  <input
+                    name="name"
+                    defaultValue={category.name}
+                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3 text-sm font-semibold normal-case tracking-normal text-slate-900"
+                    required
+                  />
+                </label>
+                <label className="block text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  Sort
+                  <input
+                    name="sortOrder"
+                    type="number"
+                    min="0"
+                    defaultValue={category.sortOrder}
+                    className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3 text-sm font-semibold normal-case tracking-normal text-slate-900"
+                    required
+                  />
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm text-slate-500">{count} item{count === 1 ? "" : "s"}</span>
+                <div className="flex gap-2">
+                  <Button variant="secondary" disabled={categoryPending}>
+                    Save
+                  </Button>
+                  <Button type="button" variant="danger" disabled={categoryPending || count > 0} onClick={() => deleteCategory(category)}>
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </form>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
