@@ -11,26 +11,9 @@ const G_CAFE_LOGO_SRC = "/assets/g-cafe-logo.jpg";
 const KIOSK_HERO_IMAGE_SRC = "/assets/g-cafe-kiosk-hero.jpg";
 
 const kioskCopy = {
-  tagline: {
-    en: "Order faster, pay at the counter",
-    tl: "Mas mabilis mag-order, bayad sa cashier",
-  },
-  instructions: {
-    en: "No app required. Place your order here, then pay at the cashier.",
-    tl: "Hindi kailangan ng app. Mag-order dito, pagkatapos magbayad sa cashier.",
-  },
-  startHeading: {
-    en: "Start your order here",
-    tl: "Simulan ang order dito",
-  },
-  startButton: {
-    en: "Start Order",
-    tl: "Simulan ang Order",
-  },
-  addInstruction: {
-    en: "Tap + to add items to your order.",
-    tl: "Pindutin ang + para idagdag sa order.",
-  },
+  welcomeHeading: "Order Here",
+  startButton: "Start Order",
+  addInstruction: "Tap + to add items to your order.",
 };
 
 type CartItem = {
@@ -536,8 +519,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
 
           {isKiosk ? (
             <div className="rounded-3xl border border-[#e0d8c8] bg-white px-5 py-4 text-center shadow-[0_10px_30px_rgba(28,39,35,0.06)]">
-              <p className="text-xl font-semibold text-[#2f2418]">{kioskCopy.addInstruction.en}</p>
-              <p className="mt-1 text-lg font-medium text-[#65756f]">{kioskCopy.addInstruction.tl}</p>
+              <p className="text-xl font-semibold text-[#2f2418]">{kioskCopy.addInstruction}</p>
             </div>
           ) : null}
 
@@ -929,39 +911,25 @@ function KioskStartScreen({
         />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(21,16,11,0.46),rgba(21,16,11,0.78))]" />
 
-        <div className="flex max-w-4xl flex-col items-center gap-4 rounded-[2rem] bg-black/32 px-5 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.18)] backdrop-blur-sm sm:flex-row sm:px-7 sm:text-left">
+        <div className="flex max-w-4xl flex-col items-center gap-4 rounded-[2rem] bg-black/32 px-6 py-6 text-center shadow-[0_20px_60px_rgba(0,0,0,0.18)] backdrop-blur-sm sm:px-10">
           {logoSrc ? (
             <Image src={logoSrc} alt={`${restaurant.name} logo`} width={120} height={120} className="size-20 rounded-2xl bg-white object-contain p-2 sm:size-24" priority />
           ) : null}
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f0d8b0]">{restaurant.name}</p>
-            <h1 className="mt-1 text-2xl font-semibold leading-tight sm:text-4xl">{kioskCopy.tagline.en}</h1>
-            <p className="mt-1 text-lg font-medium text-white/86">{kioskCopy.tagline.tl}</p>
-            <div className="mt-3 inline-flex rounded-full bg-white/92 px-4 py-2 text-sm font-semibold text-[#1b2b27]">
-              {restaurant.isOpen ? "Open now" : "Closed"}
-            </div>
-          </div>
+          <h1 className="text-5xl font-semibold leading-tight sm:text-7xl">{kioskCopy.welcomeHeading}</h1>
         </div>
 
         <div className="w-full max-w-3xl">
-          <div className="mx-auto max-w-2xl rounded-[1.75rem] bg-black/30 px-5 py-5 shadow-[0_18px_50px_rgba(0,0,0,0.16)] backdrop-blur-sm">
-            <h2 className="text-3xl font-semibold leading-tight sm:text-4xl">{kioskCopy.startHeading.en}</h2>
-            <p className="mt-2 text-xl font-medium text-white/88 sm:text-2xl">{kioskCopy.startHeading.tl}</p>
-            <p className="mt-4 text-lg leading-7 text-white/90">{kioskCopy.instructions.en}</p>
-            <p className="mt-1 text-base leading-7 text-white/82">{kioskCopy.instructions.tl}</p>
-          </div>
           {!restaurant.isOpen ? (
             <p className="mx-auto mt-8 max-w-2xl rounded-2xl bg-rose-50 p-4 text-lg leading-7 text-rose-700">
               This restaurant is currently closed for ordering. Please ask the counter for help.
             </p>
           ) : null}
           <button
-            className="mt-6 min-h-24 w-full max-w-xl rounded-[1.5rem] bg-[#b42318] px-8 py-4 text-3xl font-semibold text-white shadow-[0_18px_50px_rgba(180,35,24,0.34)] transition hover:bg-[#981b12] active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-600"
+            className="mt-2 min-h-28 w-full max-w-xl animate-[kioskCtaPulse_2.4s_ease-in-out_infinite] rounded-[1.5rem] bg-[#b42318] px-8 py-5 text-4xl font-semibold text-white shadow-[0_18px_50px_rgba(180,35,24,0.34)] transition hover:bg-[#981b12] active:scale-[0.99] disabled:animate-none disabled:bg-slate-300 disabled:text-slate-600"
             disabled={!restaurant.isOpen}
             onClick={onStart}
           >
-            <span className="block">{kioskCopy.startButton.en}</span>
-            <span className="mt-1 block text-xl font-medium text-white/86">{kioskCopy.startButton.tl}</span>
+            {kioskCopy.startButton}
           </button>
         </div>
       </section>
