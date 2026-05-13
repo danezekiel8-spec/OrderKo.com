@@ -341,6 +341,8 @@ export function AdminDashboard({
             onCategoriesChange={setCategoryList}
           />
 
+          <StaffPinManager />
+
           <form key={editing?.id ?? `new-${formVersion}`} action={save} className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
             <h2 className="text-xl font-semibold">{editing ? "Edit item" : "Add menu item"}</h2>
             {error ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
@@ -688,6 +690,53 @@ function CategoryManager({
   );
 }
 
+function StaffPinManager() {
+  const [message, setMessage] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [pinFormVersion, setPinFormVersion] = useState(0);
+  const [pinPending, startPinTransition] = useTransition();
+
+  function savePins(formData: FormData) {
+    setMessage("");
+    setPinError("");
+    const payload = {
+      cashierPin: String(formData.get("cashierPin") ?? ""),
+      kitchenPin: String(formData.get("kitchenPin") ?? ""),
+      adminPin: String(formData.get("adminPin") ?? ""),
+    };
+
+    startPinTransition(async () => {
+      const response = await fetch("/api/admin/staff-credentials", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = (await response.json().catch(() => null)) as { error?: string; updatedRoles?: string[] } | null;
+      if (!response.ok) {
+        setPinError(result?.error ?? "Could not update staff PINs.");
+        return;
+      }
+      setMessage(`Updated ${result?.updatedRoles?.join(", ") || "staff"} PINs.`);
+      setPinFormVersion((current) => current + 1);
+    });
+  }
+
+  return (
+    <form key={pinFormVersion} action={savePins} className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
+      <h2 className="text-xl font-semibold">Staff PINs</h2>
+      <p className="mt-1 text-sm leading-6 text-slate-500">PINs are scoped to this restaurant only. Leave a field blank to keep its current PIN.</p>
+      {pinError ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{pinError}</p> : null}
+      {message ? <p className="mt-3 rounded-lg bg-teal-50 p-3 text-sm text-teal-800">{message}</p> : null}
+      <div className="mt-4 grid gap-3">
+        <Field name="cashierPin" label="New cashier PIN" defaultValue="" />
+        <Field name="kitchenPin" label="New kitchen PIN" defaultValue="" />
+        <Field name="adminPin" label="New admin PIN" defaultValue="" />
+      </div>
+      <Button className="mt-5" disabled={pinPending}>{pinPending ? "Saving..." : "Update PINs"}</Button>
+    </form>
+  );
+}
+
 function Field({
   name,
   label,
@@ -704,7 +753,7 @@ function Field({
         name={name}
         defaultValue={defaultValue}
         className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3"
-        required={name !== "imageUrl"}
+        required={name !== "imageUrl" && !name.endsWith("Pin")}
       />
     </label>
   );

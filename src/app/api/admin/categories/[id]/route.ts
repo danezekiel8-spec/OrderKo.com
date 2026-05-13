@@ -10,14 +10,20 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
-  const role = requireRequestRole(request, ["admin"]);
-  if (!role) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const session = requireRequestRole(request, ["admin"]);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
   try {
     const { id } = await context.params;
     const body = categoryMutationSchema.parse(await request.json());
+    const existing = await prisma.category.findFirst({
+      where: { id, restaurantId: session.restaurantId },
+      select: { id: true },
+    });
+    if (!existing) return NextResponse.json({ error: "Category not found." }, { status: 404 });
+
     const category = await prisma.category.update({
-      where: { id },
+      where: { id: existing.id },
       data: {
         name: body.name,
         sortOrder: body.sortOrder,
@@ -40,11 +46,11 @@ export async function DELETE(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
-  const role = requireRequestRole(request, ["admin"]);
-  if (!role) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const session = requireRequestRole(request, ["admin"]);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
   const { id } = await context.params;
-  const itemCount = await prisma.menuItem.count({ where: { categoryId: id } });
+  const itemCount = await prisma.menuItem.count({ where: { categoryId: id, restaurantId: session.restaurantId } });
   if (itemCount > 0) {
     return NextResponse.json(
       { error: "Move or delete every menu item in this category before deleting it." },
@@ -52,6 +58,7 @@ export async function DELETE(
     );
   }
 
-  await prisma.category.delete({ where: { id } });
+  const result = await prisma.category.deleteMany({ where: { id, restaurantId: session.restaurantId } });
+  if (result.count === 0) return NextResponse.json({ error: "Category not found." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

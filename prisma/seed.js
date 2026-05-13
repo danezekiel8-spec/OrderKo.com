@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+const { createHmac } = require("node:crypto");
 const { existsSync, readFileSync } = require("node:fs");
 const path = require("node:path");
 const { PrismaClient } = require("@prisma/client");
@@ -19,6 +20,16 @@ if (process.env.NODE_ENV === "production" || (databaseUrl && !databaseUrl.starts
 }
 
 const prisma = new PrismaClient();
+
+function staffPinSecret() {
+  return process.env.STAFF_PIN_SECRET || process.env.STAFF_SESSION_SECRET || "development-only-secret";
+}
+
+function hashStaffPin(restaurantId, role, pin) {
+  return createHmac("sha256", staffPinSecret())
+    .update(`${restaurantId}:${role}:${pin.trim()}`)
+    .digest("base64url");
+}
 
 const optionGroups = {
   milkTea: [
@@ -70,6 +81,7 @@ async function main() {
   await prisma.orderStatusEvent.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
+  await prisma.staffCredential.deleteMany();
   await prisma.menuItem.deleteMany();
   await prisma.category.deleteMany();
   await prisma.restaurant.deleteMany();
@@ -94,6 +106,29 @@ async function main() {
   });
 
   const byName = new Map(restaurant.categories.map((category) => [category.name, category.id]));
+
+  await prisma.staffCredential.createMany({
+    data: [
+      {
+        restaurantId: restaurant.id,
+        role: "cashier",
+        label: "Cashier",
+        pinHash: hashStaffPin(restaurant.id, "cashier", process.env.CASHIER_PIN || "1111"),
+      },
+      {
+        restaurantId: restaurant.id,
+        role: "kitchen",
+        label: "Kitchen",
+        pinHash: hashStaffPin(restaurant.id, "kitchen", process.env.KITCHEN_PIN || "2222"),
+      },
+      {
+        restaurantId: restaurant.id,
+        role: "admin",
+        label: "Admin",
+        pinHash: hashStaffPin(restaurant.id, "admin", process.env.ADMIN_PIN || "9999"),
+      },
+    ],
+  });
 
   await prisma.menuItem.createMany({
     data: [

@@ -60,6 +60,17 @@ if (production && (secret.length < 32 || ["development-only-secret", "replace-th
   errors.push("STAFF_SESSION_SECRET must be a non-placeholder value with at least 32 characters.");
 }
 
+const pinSecret = value("STAFF_PIN_SECRET");
+if (production && (!pinSecret || pinSecret.length < 32 || ["development-only-secret", "replace-this-before-production"].includes(pinSecret))) {
+  errors.push("STAFF_PIN_SECRET must be a non-placeholder value with at least 32 characters.");
+} else if (!production && !pinSecret) {
+  warnings.push("STAFF_PIN_SECRET is not set; staff PIN hashes will use STAFF_SESSION_SECRET locally.");
+}
+
+if (value("ORDERKO_DEFAULT_RESTAURANT_SLUG") && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value("ORDERKO_DEFAULT_RESTAURANT_SLUG"))) {
+  errors.push("ORDERKO_DEFAULT_RESTAURANT_SLUG must be a lowercase restaurant slug.");
+}
+
 for (const name of ["ADMIN_PIN", "CASHIER_PIN", "KITCHEN_PIN"]) {
   const pin = value(name);
   if (production && hasWeakPin(pin)) {

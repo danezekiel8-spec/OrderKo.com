@@ -21,6 +21,7 @@ function safeNextPath(value: string | null, fallback: string) {
 export function StaffLogin() {
   const searchParams = useSearchParams();
   const [role, setRole] = useState<StaffRole>("cashier");
+  const [restaurantSlug, setRestaurantSlug] = useState("g-cafe");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -31,7 +32,7 @@ export function StaffLogin() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, pin }),
+        body: JSON.stringify({ role, pin, restaurantSlug }),
       });
       if (!response.ok) {
         const result = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -67,6 +68,17 @@ export function StaffLogin() {
           ))}
         </div>
         <label className="mt-5 block text-sm font-semibold">
+          Restaurant slug
+          <input
+            value={restaurantSlug}
+            onChange={(event) => setRestaurantSlug(event.target.value.toLowerCase().trim())}
+            className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 px-3 text-lg"
+            placeholder="g-cafe"
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
+        </label>
+        <label className="mt-5 block text-sm font-semibold">
           PIN
           <input
             value={pin}
@@ -81,7 +93,7 @@ export function StaffLogin() {
           />
         </label>
         {error ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
-        <Button className="mt-5 w-full" disabled={pending || pin.length === 0} onClick={login}>
+        <Button className="mt-5 w-full" disabled={pending || pin.length === 0 || restaurantSlug.length < 2} onClick={login}>
           {pending ? "Checking..." : "Sign in"}
         </Button>
       </section>

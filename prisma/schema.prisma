@@ -24,18 +24,34 @@ enum PaymentStatus {
 }
 
 model Restaurant {
-  id          String     @id @default(cuid())
-  slug        String     @unique
-  name        String
-  description String
-  address     String
-  currency    String     @default("NZD")
-  isOpen      Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  categories  Category[]
-  menuItems   MenuItem[]
-  orders      Order[]
+  id               String            @id @default(cuid())
+  slug             String            @unique
+  name             String
+  description      String
+  address          String
+  currency         String            @default("NZD")
+  isOpen           Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  categories       Category[]
+  menuItems        MenuItem[]
+  orders           Order[]
+  staffCredentials StaffCredential[]
+}
+
+model StaffCredential {
+  id           String     @id @default(cuid())
+  restaurantId String
+  role         String
+  label        String?
+  pinHash      String
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, role])
+  @@index([restaurantId])
 }
 
 model Category {
@@ -93,6 +109,7 @@ model Order {
   items               OrderItem[]
   statusEvents        OrderStatusEvent[]
 
+  @@unique([restaurantId, orderNumber])
   @@index([restaurantId, orderNumber])
   @@index([restaurantId, status, paymentStatus, createdAt])
 }

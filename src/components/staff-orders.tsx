@@ -18,7 +18,7 @@ const kitchenActions: { status: OrderStatus; label: string }[] = [
   { status: "COMPLETED", label: "Completed" },
 ];
 
-export function StaffOrders({ mode }: { mode: Mode }) {
+export function StaffOrders({ mode, restaurantName }: { mode: Mode; restaurantName?: string }) {
   const [orders, setOrders] = useState<StaffOrderDto[]>([]);
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
@@ -105,6 +105,7 @@ export function StaffOrders({ mode }: { mode: Mode }) {
             <p className="mt-1 text-sm text-slate-500">
               {mode === "cashier" ? "Confirm counter payments before kitchen work starts." : "Paid orders only, oldest first."}
             </p>
+            {restaurantName ? <p className="mt-1 text-sm font-semibold text-teal-800">{restaurantName}</p> : null}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
               <Badge tone={connection === "live" ? "good" : connection === "offline" ? "danger" : "warn"}>
                 {connection === "live" ? "Live" : connection === "offline" ? "Offline" : "Reconnecting"}

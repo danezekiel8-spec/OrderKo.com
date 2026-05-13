@@ -25,8 +25,8 @@ function signUpload(params: Record<string, string>, apiSecret: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const role = requireRequestRole(request, ["admin"]);
-  if (!role) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const session = requireRequestRole(request, ["admin"]);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
   const config = cloudinaryConfig();
   if (!config) {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   const timestamp = Math.round(Date.now() / 1000).toString();
   const uploadParams = {
-    folder: "orderko/menu",
+    folder: `orderko/${session.restaurantSlug}/menu`,
     timestamp,
   };
   const signature = signUpload(uploadParams, config.apiSecret);

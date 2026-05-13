@@ -7,16 +7,13 @@ import { restaurantSettingsSchema } from "@/lib/validation";
 export const dynamic = "force-dynamic";
 
 export async function PATCH(request: NextRequest) {
-  const role = requireRequestRole(request, ["admin"]);
-  if (!role) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const session = requireRequestRole(request, ["admin"]);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
   try {
     const body = restaurantSettingsSchema.parse(await request.json());
-    const restaurant = await prisma.restaurant.findFirst({ orderBy: { createdAt: "asc" } });
-    if (!restaurant) return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
-
     const updated = await prisma.restaurant.update({
-      where: { id: restaurant.id },
+      where: { id: session.restaurantId },
       data: body,
     });
 

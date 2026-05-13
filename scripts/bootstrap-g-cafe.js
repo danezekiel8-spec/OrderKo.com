@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+const { createHmac } = require("node:crypto");
 const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
@@ -121,6 +122,22 @@ const menuItems = [
   },
 ];
 
+const staffPins = {
+  cashier: process.env.CASHIER_PIN || "1111",
+  kitchen: process.env.KITCHEN_PIN || "2222",
+  admin: process.env.ADMIN_PIN || "9999",
+};
+
+function staffPinSecret() {
+  return process.env.STAFF_PIN_SECRET || process.env.STAFF_SESSION_SECRET || "development-only-secret";
+}
+
+function hashStaffPin(restaurantId, role, pin) {
+  return createHmac("sha256", staffPinSecret())
+    .update(`${restaurantId}:${role}:${pin.trim()}`)
+    .digest("base64url");
+}
+
 async function findOrCreateCategory(restaurantId, input) {
   const existing = await prisma.category.findFirst({
     where: { restaurantId, name: input.name },
@@ -168,6 +185,23 @@ async function findOrCreateMenuItem(restaurantId, categoryId, input) {
   return prisma.menuItem.create({ data });
 }
 
+async function upsertStaffCredential(restaurantId, role, pin) {
+  return prisma.staffCredential.upsert({
+    where: { restaurantId_role: { restaurantId, role } },
+    update: {
+      pinHash: hashStaffPin(restaurantId, role, pin),
+      isActive: true,
+      label: role,
+    },
+    create: {
+      restaurantId,
+      role,
+      label: role,
+      pinHash: hashStaffPin(restaurantId, role, pin),
+    },
+  });
+}
+
 async function main() {
   const restaurant = await prisma.restaurant.upsert({
     where: { slug: restaurantInput.slug },
@@ -187,7 +221,11 @@ async function main() {
     await findOrCreateMenuItem(restaurant.id, category.id, item);
   }
 
-  console.log(`Bootstrapped ${restaurant.name} (${restaurant.slug}) without deleting existing orders.`);
+  for (const [role, pin] of Object.entries(staffPins)) {
+    await upsertStaffCredential(restaurant.id, role, pin);
+  }
+
+  console.log(`Bootstrapped ${restaurant.name} (${restaurant.slug}) menu and tenant staff credentials without deleting existing orders.`);
 }
 
 main()

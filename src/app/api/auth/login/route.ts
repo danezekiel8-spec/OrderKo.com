@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createStaffSession, isPinValid, staffCookieName, staffPinStatus, type StaffRole } from "@/lib/auth";
+import { createStaffSession, staffCookieName, validateStaffLogin, type StaffRole } from "@/lib/auth";
 
 const roles = ["cashier", "kitchen", "admin"];
 const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -25,19 +25,20 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as {
     role?: StaffRole;
     pin?: string;
+    restaurantSlug?: string;
   } | null;
 
-  const key = `${requestKey(request)}:${body?.role ?? "unknown"}`;
-  if (!body?.role || !roles.includes(body.role) || !body.pin || !isPinValid(body.role, body.pin)) {
-    if (body?.role && roles.includes(body.role)) {
-      const status = staffPinStatus(body.role);
-      console.warn("Staff login failed", {
-        role: body.role,
-        suppliedPinLength: body.pin?.trim().length ?? 0,
-        configuredPinLength: status.length,
-        pinConfigured: status.configured,
-      });
-    }
+  const key = `${requestKey(request)}:${body?.restaurantSlug ?? "unknown"}:${body?.role ?? "unknown"}`;
+  const roleIsValid = Boolean(body?.role && roles.includes(body.role));
+  const session = roleIsValid && body?.pin
+    ? await validateStaffLogin({
+        role: body.role!,
+        pin: body.pin,
+        restaurantSlug: body.restaurantSlug,
+      })
+    : null;
+
+  if (!body?.role || !roleIsValid || !body.pin || !session) {
     if (recordFailedAttempt(key)) {
       return NextResponse.json({ error: "Too many sign-in attempts. Try again in a few minutes." }, { status: 429 });
     }
@@ -45,9 +46,17 @@ export async function POST(request: NextRequest) {
   }
 
   attempts.delete(key);
-  const response = NextResponse.json({ ok: true, role: body.role });
+  const response = NextResponse.json({
+    ok: true,
+    role: session.role,
+    restaurant: {
+      id: session.restaurantId,
+      slug: session.restaurantSlug,
+      name: session.restaurantName,
+    },
+  });
   try {
-    response.cookies.set(staffCookieName, createStaffSession(body.role), {
+    response.cookies.set(staffCookieName, createStaffSession(session), {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",

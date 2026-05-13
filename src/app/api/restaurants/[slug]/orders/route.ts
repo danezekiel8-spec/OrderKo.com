@@ -25,20 +25,20 @@ export async function POST(
     const { slug } = await context.params;
     const body = placeOrderSchema.parse(await request.json());
 
-    const existing = await prisma.order.findUnique({
-      where: { submissionKey: body.submissionKey },
-      select: { id: true, orderCode: true, orderNumber: true, status: true, customerAccessToken: true },
-    });
-    if (existing) {
-      return NextResponse.json({ order: existing, duplicate: true });
-    }
-
     const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
     if (!restaurant) {
       return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
     }
     if (!restaurant.isOpen) {
       return NextResponse.json({ error: "This restaurant is currently closed." }, { status: 409 });
+    }
+
+    const existing = await prisma.order.findFirst({
+      where: { restaurantId: restaurant.id, submissionKey: body.submissionKey },
+      select: { id: true, orderCode: true, orderNumber: true, status: true, customerAccessToken: true },
+    });
+    if (existing) {
+      return NextResponse.json({ order: existing, duplicate: true });
     }
 
     const itemIds = [...new Set(body.items.map((item) => item.menuItemId))];
@@ -139,8 +139,8 @@ export async function POST(
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
           const target = Array.isArray(error.meta?.target) ? error.meta.target.join(",") : String(error.meta?.target ?? "");
           if (target.includes("submissionKey")) {
-            const duplicate = await prisma.order.findUnique({
-              where: { submissionKey: body.submissionKey },
+            const duplicate = await prisma.order.findFirst({
+              where: { restaurantId: restaurant.id, submissionKey: body.submissionKey },
               select: { id: true, orderCode: true, orderNumber: true, status: true, customerAccessToken: true },
             });
             if (duplicate) {

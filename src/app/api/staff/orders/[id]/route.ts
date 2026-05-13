@@ -12,17 +12,17 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
-  const role = requireRequestRole(request, ["cashier", "kitchen", "admin"]);
-  if (!role) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const session = requireRequestRole(request, ["cashier", "kitchen", "admin"]);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
   try {
     const body = staffOrderActionSchema.parse(await request.json().catch(() => null));
 
-    const order = await prisma.order.findUnique({ where: { id } });
+    const order = await prisma.order.findFirst({ where: { id, restaurantId: session.restaurantId } });
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
     if (body.action === "markPaid") {
-      if (!["cashier", "admin"].includes(role)) {
+      if (!["cashier", "admin"].includes(session.role)) {
         return NextResponse.json({ error: "Only cashier/admin can mark paid." }, { status: 403 });
       }
       if (order.status !== "AWAITING_PAYMENT") {
@@ -30,7 +30,7 @@ export async function PATCH(
       }
       const updated = await prisma.$transaction(async (tx) => {
         const result = await tx.order.updateMany({
-          where: { id, status: "AWAITING_PAYMENT", paymentStatus: "UNPAID" },
+          where: { id, restaurantId: session.restaurantId, status: "AWAITING_PAYMENT", paymentStatus: "UNPAID" },
           data: {
             paymentStatus: "PAID",
             status: "PAYMENT_CONFIRMED",
@@ -48,10 +48,10 @@ export async function PATCH(
     }
 
     if (body.action === "cancel") {
-      if (!["cashier", "admin"].includes(role)) {
+      if (!["cashier", "admin"].includes(session.role)) {
         return NextResponse.json({ error: "Only cashier/admin can cancel orders." }, { status: 403 });
       }
-      if (role === "cashier" && order.status !== "AWAITING_PAYMENT") {
+      if (session.role === "cashier" && order.status !== "AWAITING_PAYMENT") {
         return NextResponse.json({ error: "Ask an admin to cancel orders after payment is confirmed." }, { status: 403 });
       }
       if (["COMPLETED", "CANCELED"].includes(order.status)) {
@@ -59,7 +59,7 @@ export async function PATCH(
       }
       const updated = await prisma.$transaction(async (tx) => {
         const result = await tx.order.updateMany({
-          where: { id, status: { notIn: ["COMPLETED", "CANCELED"] } },
+          where: { id, restaurantId: session.restaurantId, status: { notIn: ["COMPLETED", "CANCELED"] } },
           data: {
             paymentStatus: "CANCELED",
             status: "CANCELED",
@@ -77,7 +77,7 @@ export async function PATCH(
     }
 
     if (body.action === "setStatus") {
-      if (!["kitchen", "admin"].includes(role)) {
+      if (!["kitchen", "admin"].includes(session.role)) {
         return NextResponse.json({ error: "Only kitchen/admin can update preparation status." }, { status: 403 });
       }
       if (order.paymentStatus !== "PAID") {
@@ -89,7 +89,7 @@ export async function PATCH(
 
       const updated = await prisma.$transaction(async (tx) => {
         const result = await tx.order.updateMany({
-          where: { id, status: order.status, paymentStatus: "PAID" },
+          where: { id, restaurantId: session.restaurantId, status: order.status, paymentStatus: "PAID" },
           data: {
             status: body.status,
             completedAt: body.status === "COMPLETED" ? new Date() : undefined,

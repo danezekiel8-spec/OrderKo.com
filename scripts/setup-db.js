@@ -5,7 +5,6 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const dbPath = path.join(root, "prisma", "dev.db");
-const migrationPath = path.join(root, "prisma", "migrations", "20260508110500_init", "migration.sql");
 const shouldReset = process.argv.includes("--reset");
 const shouldSeed = !process.argv.includes("--no-seed");
 
@@ -25,13 +24,6 @@ function run(command, args, options = {}) {
   });
 }
 
-function runSql(sql) {
-  execFileSync("sqlite3", [dbPath, sql], {
-    cwd: root,
-    stdio: "pipe",
-  });
-}
-
 const databaseUrl = readDatabaseUrl();
 if (process.env.NODE_ENV === "production") {
   throw new Error("setup-db.js is a local SQLite helper and must not run in production.");
@@ -47,17 +39,7 @@ if (shouldReset && existsSync(dbPath)) {
   rmSync(dbPath);
 }
 
-if (!existsSync(dbPath)) {
-  run("sqlite3", [dbPath, `.read ${migrationPath}`]);
-}
-
-try {
-  runSql('ALTER TABLE "Order" ADD COLUMN "customerAccessToken" TEXT;');
-} catch {
-  // Column already exists in an up-to-date local database.
-}
-runSql('CREATE UNIQUE INDEX IF NOT EXISTS "Order_customerAccessToken_key" ON "Order"("customerAccessToken");');
-
+run("npx", ["prisma", "migrate", "deploy"]);
 run("npx", ["prisma", "generate"]);
 
 if (shouldSeed) {

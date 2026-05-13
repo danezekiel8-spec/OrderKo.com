@@ -6,13 +6,13 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const role = requireRequestRole(request, ["cashier", "kitchen", "admin"]);
-  if (!role) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const session = requireRequestRole(request, ["cashier", "kitchen", "admin"]);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
-  const requestedView = searchParams.get("view") ?? role;
-  const view = requestedView === "cashier" || requestedView === "kitchen" ? requestedView : role;
-  if (role !== "admin" && view !== role) {
+  const requestedView = searchParams.get("view") ?? session.role;
+  const view = requestedView === "cashier" || requestedView === "kitchen" ? requestedView : session.role;
+  if (session.role !== "admin" && view !== session.role) {
     return NextResponse.json({ error: "This staff role cannot access that order view." }, { status: 403 });
   }
   const q = searchParams.get("q")?.trim().toUpperCase();
@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
   const orders = await prisma.order.findMany({
     where: {
       ...where,
+      restaurantId: session.restaurantId,
       ...(q ? { orderCode: { contains: q } } : {}),
     },
     include: {

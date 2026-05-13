@@ -5,10 +5,10 @@ import { AdminDashboard } from "@/components/admin-dashboard";
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  await requireRole(["admin"]);
+  const session = await requireRole(["admin"]);
 
-  const restaurant = await prisma.restaurant.findFirst({
-    orderBy: { createdAt: "asc" },
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: session.restaurantId },
     include: {
       categories: { orderBy: { sortOrder: "asc" } },
       menuItems: { where: { isActive: true }, orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }] },

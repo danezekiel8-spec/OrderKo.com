@@ -35,6 +35,12 @@ export const categoryMutationSchema = z.object({
   sortOrder: z.number().int().min(0).max(10000).default(0),
 });
 
+export const staffCredentialsMutationSchema = z.object({
+  cashierPin: z.string().trim().min(4).max(12).optional().or(z.literal("")),
+  kitchenPin: z.string().trim().min(4).max(12).optional().or(z.literal("")),
+  adminPin: z.string().trim().min(4).max(12).optional().or(z.literal("")),
+});
+
 export const restaurantSettingsSchema = z.object({
   name: z.string().min(2).max(120),
   description: z.string().min(2).max(500),

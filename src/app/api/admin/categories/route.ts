@@ -7,20 +7,14 @@ import { categoryMutationSchema } from "@/lib/validation";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const role = requireRequestRole(request, ["admin"]);
-  if (!role) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const session = requireRequestRole(request, ["admin"]);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
   try {
     const body = categoryMutationSchema.parse(await request.json());
-    const restaurant = await prisma.restaurant.findFirst({
-      orderBy: { createdAt: "asc" },
-      select: { id: true },
-    });
-    if (!restaurant) return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
-
     const category = await prisma.category.create({
       data: {
-        restaurantId: restaurant.id,
+        restaurantId: session.restaurantId,
         name: body.name,
         sortOrder: body.sortOrder,
       },
