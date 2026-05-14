@@ -182,6 +182,30 @@ export function SuperAdminDashboard({
     });
   }
 
+  function deleteRestaurant(restaurant: SuperAdminRestaurant) {
+    setError("");
+    if (restaurant._count.orders > 0) {
+      setError("Restaurants with orders cannot be deleted. Pause service instead to preserve order history.");
+      return;
+    }
+    if (!window.confirm(`Permanently remove ${restaurant.name}? This removes its menu, categories, staff PINs, and links.`)) return;
+    startTransition(async () => {
+      const response = await fetch(`/api/super-admin/restaurants/${restaurant.id}`, { method: "DELETE" });
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        setError(result?.error ?? "Could not delete restaurant.");
+        return;
+      }
+      setRestaurants((current) => current.filter((item) => item.id !== restaurant.id));
+      setCreated((current) => (current?.id === restaurant.id ? null : current));
+      setExpandedIds((current) => {
+        const next = new Set(current);
+        next.delete(restaurant.id);
+        return next;
+      });
+    });
+  }
+
   function updateLeadStatus(id: string, status: LeadStatus) {
     setError("");
     startTransition(async () => {
@@ -199,6 +223,20 @@ export function SuperAdminDashboard({
         return;
       }
       setLeads((current) => current.map((lead) => (lead.id === result.lead!.id ? result.lead! : lead)));
+    });
+  }
+
+  function deleteLead(lead: SuperAdminLead) {
+    setError("");
+    if (!window.confirm(`Remove demo request from ${lead.restaurantName}?`)) return;
+    startTransition(async () => {
+      const response = await fetch(`/api/super-admin/leads/${lead.id}`, { method: "DELETE" });
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        setError(result?.error ?? "Could not delete demo request.");
+        return;
+      }
+      setLeads((current) => current.filter((item) => item.id !== lead.id));
     });
   }
 
@@ -272,7 +310,7 @@ export function SuperAdminDashboard({
 
           <div className="space-y-6">
             {created ? <CreatedSummary restaurant={created} /> : null}
-            <LeadsPanel leads={filteredLeads} total={leads.length} busy={pending} onUpdateStatus={updateLeadStatus} />
+            <LeadsPanel leads={filteredLeads} total={leads.length} busy={pending} onUpdateStatus={updateLeadStatus} onDelete={deleteLead} />
             <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -289,6 +327,7 @@ export function SuperAdminDashboard({
                     expanded={expandedIds.has(restaurant.id)}
                     onToggleExpanded={() => toggleExpanded(restaurant.id)}
                     onUpdate={(payload, message) => updateRestaurant(restaurant.id, payload, message)}
+                    onDelete={() => deleteRestaurant(restaurant)}
                   />
                 ))}
               </div>
@@ -317,11 +356,13 @@ function LeadsPanel({
   total,
   busy,
   onUpdateStatus,
+  onDelete,
 }: {
   leads: SuperAdminLead[];
   total: number;
   busy: boolean;
   onUpdateStatus: (id: string, status: LeadStatus) => void;
+  onDelete: (lead: SuperAdminLead) => void;
 }) {
   return (
     <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
@@ -351,18 +392,23 @@ function LeadsPanel({
                   {lead.phone ? <p className="mt-1 text-sm text-slate-500">Phone: {lead.phone}</p> : null}
                   <p className="mt-1 text-xs font-semibold text-slate-400">Submitted {dateLabel(lead.createdAt)}</p>
                 </div>
-                <select
-                  value={lead.status}
-                  disabled={busy}
-                  onChange={(event) => onUpdateStatus(lead.id, event.target.value as LeadStatus)}
-                  className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold"
-                  aria-label={`Update status for ${lead.restaurantName}`}
-                >
-                  <option value="NEW">New</option>
-                  <option value="CONTACTED">Contacted</option>
-                  <option value="QUALIFIED">Qualified</option>
-                  <option value="CLOSED">Closed</option>
-                </select>
+                <div className="flex flex-col gap-2 sm:items-end">
+                  <select
+                    value={lead.status}
+                    disabled={busy}
+                    onChange={(event) => onUpdateStatus(lead.id, event.target.value as LeadStatus)}
+                    className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold"
+                    aria-label={`Update status for ${lead.restaurantName}`}
+                  >
+                    <option value="NEW">New</option>
+                    <option value="CONTACTED">Contacted</option>
+                    <option value="QUALIFIED">Qualified</option>
+                    <option value="CLOSED">Closed</option>
+                  </select>
+                  <Button type="button" variant="danger" disabled={busy} onClick={() => onDelete(lead)}>
+                    Remove
+                  </Button>
+                </div>
               </div>
               {lead.message ? <p className="mt-3 rounded-lg bg-white p-3 text-sm leading-6 text-slate-600">{lead.message}</p> : null}
             </article>
@@ -401,12 +447,14 @@ function RestaurantCard({
   expanded,
   onToggleExpanded,
   onUpdate,
+  onDelete,
 }: {
   restaurant: SuperAdminRestaurant;
   busy: boolean;
   expanded: boolean;
   onToggleExpanded: () => void;
   onUpdate: (payload: Record<string, unknown>, errorMessage: string) => void;
+  onDelete: () => void;
 }) {
   const links = useMemo(() => restaurantLinks(restaurant.slug), [restaurant.slug]);
   return (
@@ -457,7 +505,21 @@ function RestaurantCard({
               {restaurant.isKioskEnabled ? "Turn kiosk off" : "Turn kiosk on"}
             </Button>
             <QrDownload slug={restaurant.slug} />
+            <Button
+              type="button"
+              variant="danger"
+              disabled={busy || restaurant._count.orders > 0}
+              onClick={onDelete}
+              title={restaurant._count.orders > 0 ? "Restaurants with orders cannot be deleted." : "Remove this restaurant."}
+            >
+              Remove restaurant
+            </Button>
           </div>
+          {restaurant._count.orders > 0 ? (
+            <p className="rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-800">
+              This restaurant has orders, so deletion is disabled to preserve operational history. Pause service if needed.
+            </p>
+          ) : null}
 
           <div className="grid gap-2">
             <CopyLine label="Customer" value={links.customer} />

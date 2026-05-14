@@ -110,3 +110,49 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  if (!requireSuperAdminRequest(request)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  try {
+    const { id } = await context.params;
+    const existing = await prisma.restaurant.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        _count: { select: { orders: true } },
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Restaurant not found." }, { status: 404 });
+    }
+
+    if (existing._count.orders > 0) {
+      return NextResponse.json(
+        { error: "Restaurants with orders cannot be deleted. Pause service instead to preserve operational history." },
+        { status: 409 },
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.staffCredential.deleteMany({ where: { restaurantId: id } });
+      await tx.menuItem.deleteMany({ where: { restaurantId: id } });
+      await tx.category.deleteMany({ where: { restaurantId: id } });
+      await tx.restaurant.delete({ where: { id } });
+    });
+
+    return NextResponse.json({ ok: true, deletedId: id });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Could not delete restaurant." },
+      { status: 400 },
+    );
+  }
+}

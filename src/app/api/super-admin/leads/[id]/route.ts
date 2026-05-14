@@ -56,3 +56,23 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  if (!requireSuperAdminRequest(request)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  try {
+    const { id } = await context.params;
+    await prisma.lead.delete({ where: { id } });
+    return NextResponse.json({ ok: true, deletedId: id });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Could not delete demo request." },
+      { status: 400 },
+    );
+  }
+}
