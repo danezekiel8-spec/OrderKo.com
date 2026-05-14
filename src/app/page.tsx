@@ -174,7 +174,7 @@ export default function Home() {
             {benefits.map((benefit, index) => (
               <article
                 key={benefit.label}
-                className="landing-benefit-card landing-hover-lift rounded-2xl border border-[#e2e8e3] bg-[#fbfaf7] p-5"
+                className="landing-benefit-card landing-hover-lift p-2"
                 style={{ animationDelay: `${index * 110}ms` }}
               >
                 <span className="grid size-10 place-items-center rounded-xl bg-[#0f766e] text-sm font-black text-white">
@@ -198,7 +198,7 @@ export default function Home() {
           </div>
           <div className="grid gap-3">
             {steps.map((step, index) => (
-              <div key={step} className="flex items-center gap-4 rounded-2xl bg-white/10 p-4">
+              <div key={step} className="flex items-center gap-4 p-1">
                 <span className="grid size-12 shrink-0 place-items-center rounded-full bg-white text-lg font-black text-[#17302b]">
                   {index + 1}
                 </span>
