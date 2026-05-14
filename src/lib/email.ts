@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 type LeadNotificationInput = {
   id: string;
   name: string;
@@ -66,37 +68,39 @@ function formatLeadHtml(lead: LeadNotificationInput) {
 }
 
 export async function sendLeadNotificationEmail(lead: LeadNotificationInput) {
-  const apiKey = envValue("RESEND_API_KEY");
-  if (!apiKey) {
-    return { ok: false, skipped: true, reason: "RESEND_API_KEY is not configured." };
+  const host = envValue("SMTP_HOST") || "smtp.gmail.com";
+  const port = Number(envValue("SMTP_PORT") || "587");
+  const user = envValue("SMTP_USER");
+  const pass = envValue("SMTP_PASS");
+
+  if (!user || !pass) {
+    return { ok: false, skipped: true, reason: "SMTP_USER or SMTP_PASS is not configured." };
   }
 
-  const to = envValue("LEAD_NOTIFICATION_EMAIL") || "hello.orderko@gmail.com";
-  const from = envValue("LEAD_EMAIL_FROM") || "OrderKo <onboarding@resend.dev>";
+  const to = envValue("LEAD_NOTIFICATION_EMAIL") || user;
+  const from = envValue("LEAD_EMAIL_FROM") || `OrderKo <${user}>`;
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: {
+      user,
+      pass,
     },
-    body: JSON.stringify({
+  });
+
+  try {
+    await transporter.sendMail({
       from,
       to,
-      reply_to: lead.email,
+      replyTo: lead.email,
       subject: `New OrderKo demo request: ${lead.restaurantName}`,
       text: formatLeadText(lead),
       html: formatLeadHtml(lead),
-    }),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    return {
-      ok: false,
-      skipped: false,
-      reason: `Resend email failed with ${response.status}${detail ? `: ${detail.slice(0, 300)}` : ""}`,
-    };
+    });
+  } catch (error) {
+    return { ok: false, skipped: false, reason: error instanceof Error ? error.message : "SMTP email failed." };
   }
 
   return { ok: true, skipped: false, reason: "" };

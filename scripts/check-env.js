@@ -103,17 +103,29 @@ if (cloudinaryValues.some(Boolean) && cloudinaryValues.some((entry) => !entry)) 
   errors.push("Cloudinary environment variables must be configured together.");
 }
 
-const resendApiKey = value("RESEND_API_KEY");
+const smtpUser = value("SMTP_USER");
+const smtpPass = value("SMTP_PASS");
+const smtpHost = value("SMTP_HOST");
+const smtpPort = value("SMTP_PORT");
 const leadNotificationEmail = value("LEAD_NOTIFICATION_EMAIL");
 const leadEmailFrom = value("LEAD_EMAIL_FROM");
-if (production && !resendApiKey) {
-  warnings.push("RESEND_API_KEY is not set; lead requests will save to the database but will not send email notifications.");
+if (production && (!smtpUser || !smtpPass)) {
+  warnings.push("SMTP_USER or SMTP_PASS is not set; lead requests will save to the database but will not send email notifications.");
+}
+if (smtpUser && !isEmail(smtpUser)) {
+  errors.push("SMTP_USER must be a valid email address.");
+}
+if (smtpPort && !/^\d+$/.test(smtpPort)) {
+  errors.push("SMTP_PORT must be a number.");
 }
 if (leadNotificationEmail && !isEmail(leadNotificationEmail)) {
   errors.push("LEAD_NOTIFICATION_EMAIL must be a valid email address.");
 }
-if (resendApiKey && !leadEmailFrom) {
-  warnings.push("LEAD_EMAIL_FROM is not set; lead emails will use Resend's onboarding sender.");
+if ((smtpUser || smtpPass) && !smtpHost) {
+  warnings.push("SMTP_HOST is not set; lead emails will use smtp.gmail.com.");
+}
+if ((smtpUser || smtpPass) && !leadEmailFrom) {
+  warnings.push("LEAD_EMAIL_FROM is not set; lead emails will use SMTP_USER as the sender.");
 }
 
 for (const warning of warnings) console.warn(`Warning: ${warning}`);
