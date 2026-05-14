@@ -1,47 +1,103 @@
 # OrderKo Pilot Launch Checklist
 
-## Launch Gates
+Use this before onboarding any real restaurant or running a live pilot shift.
 
-### Ordering Gate
-- Customer can place an order from `/r/g-cafe`.
-- Duplicate taps do not create duplicate orders.
-- Cart survives refresh before order placement.
-- Cashier sees incoming unpaid orders.
-- Cashier marks orders paid before kitchen work starts.
-- Kitchen status updates appear on the customer status page.
-- Refreshing the status page keeps the correct order state.
+## 1. Platform Access
 
-### Mobile Gate
-- QR opens on iPhone Safari and Android Chrome.
-- No horizontal scrolling on narrow screens.
-- Menu cards, item modal, cart drawer, and status page are easy to tap one-handed.
-- Keyboard does not hide required cart actions.
-- Uploaded Cloudinary images render on the customer menu.
-- Order number is readable enough to show cashier.
+- Production URL:
+- Super Admin URL: `/super-admin`
+- Staff login URL: `/staff/login`
+- Support contact:
+- Person monitoring launch:
+- Launch date and time:
 
-### Production Gate
-- Production database is managed and persistent; do not use local SQLite for pilot.
-- `STAFF_SESSION_SECRET`, `ADMIN_PIN`, `CASHIER_PIN`, and `KITCHEN_PIN` are changed from demo values.
-- Cloudinary env vars are configured and upload tested.
-- QR base URL uses the final HTTPS domain.
-- `npm run build` and production start pass against production-like env.
-- Admin/staff routes are protected; customer menu and order status remain public.
-- A rollback/disable-ordering plan is documented.
+## 2. Environment Check
 
-## Launch-Day SOP
+- `DATABASE_URL` is a persistent managed Postgres database.
+- `STAFF_SESSION_SECRET` is set and production-safe.
+- `ORDERKO_SUPER_ADMIN_SECRET` is set and production-safe.
+- `ORDERKO_QR_BASE_URL` uses the final HTTPS production domain.
+- Cloudinary variables are configured if image upload is enabled.
+- Render deploy is green.
+- `/api/health` returns healthy.
 
-- Keep one staff member watching cashier orders during the first rush period.
-- Keep a paper order pad ready if Wi-Fi or the app fails.
-- If Wi-Fi drops, staff continue with visible orders and pause new customer ordering at the counter.
-- If kitchen dashboard disconnects, cashier reads paid orders to kitchen manually until reconnect.
-- Owner/admin can pause ordering by turning off "Accept customer orders" in admin.
-- Owner/admin can mark items sold out from admin during rush.
-- Check deployment logs for failed order creation, staff action failures, upload failures, and database errors.
-- Do not reset or delete production data without a manual backup first.
+## 3. Restaurant Setup
 
-## Production Data Rules
+- Restaurant created in Super Admin.
+- Restaurant slug/username confirmed.
+- Restaurant service is active.
+- Kiosk is enabled or disabled intentionally.
+- Internal restaurant notes are filled in.
+- Staff PINs are set for admin, cashier, and kitchen.
+- Restaurant starts closed until menu and test order are verified.
 
-- Customer name and notes are optional; do not request phone/email for the pilot.
-- Staff should avoid putting private customer information in notes.
-- Export/back up production orders before any migration or reset.
-- Keep completed/canceled orders until the owner confirms retention policy.
+## 4. Menu Setup
+
+- Categories are created and ordered.
+- Menu items are added.
+- Prices are checked.
+- Sold-out toggles tested.
+- Images uploaded or image URLs added.
+- Add-ons/options checked where applicable.
+- Customer menu opens at `/r/[slug]`.
+- Kiosk opens at `/k/[slug]` if enabled.
+
+## 5. QR Setup
+
+- Customer QR points to `/r/[slug]` on the production domain.
+- Kiosk URL is ready for staff/tablet if used.
+- Printed QR scans on iPhone Safari.
+- Printed QR scans on Android Chrome.
+- QR signage is readable at counter distance.
+
+## 6. Full Order Test
+
+- Customer opens menu from QR.
+- Customer adds at least two items.
+- Customer edits quantity.
+- Customer adds a note.
+- Customer places order once.
+- Customer receives order number.
+- Cashier receives unpaid order.
+- Cashier marks paid.
+- Kitchen receives paid order.
+- Kitchen marks preparing.
+- Kitchen marks ready.
+- Customer status page shows Ready for Pickup.
+- Kitchen marks completed.
+
+## 7. Staff Briefing
+
+- Cashier knows how to log in.
+- Cashier knows to mark paid only after payment is received.
+- Kitchen knows only paid orders appear.
+- Admin knows how to mark sold out.
+- Staff know the support contact.
+- Staff know the fallback process if Wi-Fi drops.
+
+## 8. Fallback Process
+
+- Paper order pad is ready.
+- Staff know who decides when to pause ordering.
+- If ordering must stop, close restaurant ordering in Admin or pause service in Super Admin.
+- If kiosk must stop, turn kiosk off in Super Admin.
+- If Wi-Fi drops, continue visible active orders and switch to paper ordering.
+- After reconnect, reconcile paper orders with dashboard orders.
+
+## 9. Launch Monitoring
+
+- Monitor Render logs during first rush period.
+- Watch cashier and kitchen screens for delays.
+- Record customer/staff confusion.
+- Record wrong-order or duplicate-order incidents.
+- Avoid adding new features during live service unless blocking.
+
+## 10. After Pilot Shift
+
+- Count total orders.
+- Count completed orders.
+- Record canceled/problem orders.
+- Ask cashier what slowed them down.
+- Ask kitchen what was unclear.
+- Update restaurant notes in Super Admin.
+- Decide whether to launch, pause, or refine before next shift.
