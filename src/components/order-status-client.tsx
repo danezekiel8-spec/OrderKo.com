@@ -8,6 +8,7 @@ import { customerStatuses, statusLabels } from "@/lib/order-state";
 import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui";
 import type { SelectedOptionDto } from "@/types/orderko";
+import { OrderKoBrand } from "@/components/orderko-brand";
 
 type OrderStatusResponse = {
   order: {
@@ -190,9 +191,11 @@ export function OrderStatusClient({
           <div className="p-4 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div className="min-w-0">
-                <p className={`text-xs font-bold uppercase tracking-[0.16em] ${readyForPickup ? "text-teal-100" : "text-teal-700"}`}>
-                  OrderKo.com
-                </p>
+                <OrderKoBrand
+                  label="OrderKo"
+                  className={readyForPickup ? "[&_span:last-child]:text-teal-50" : ""}
+                  imageClassName={readyForPickup ? "bg-white" : ""}
+                />
                 <h1 className="mt-2 text-4xl font-semibold leading-none sm:mt-3 sm:text-5xl">#{order.orderNumber}</h1>
                 <p className={`mt-2 break-words text-xs leading-5 sm:mt-3 sm:text-sm sm:leading-6 ${readyForPickup ? "text-teal-50" : "text-[#65756f]"}`}>
                   {order.restaurant.name} · {order.orderCode}

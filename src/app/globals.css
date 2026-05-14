@@ -78,6 +78,54 @@ button {
   animation: kioskCtaPulse 2.4s ease-in-out infinite;
 }
 
+.landing-fade-in {
+  animation: landingFadeIn 680ms ease-out both;
+}
+
+.landing-fade-delay-1 {
+  animation-delay: 90ms;
+}
+
+.landing-fade-delay-2 {
+  animation-delay: 180ms;
+}
+
+.landing-fade-delay-3 {
+  animation-delay: 270ms;
+}
+
+.landing-hover-lift {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.landing-hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.landing-video-placeholder {
+  position: relative;
+}
+
+.landing-video-placeholder::before {
+  content: "";
+  position: absolute;
+  inset: -35%;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.16), transparent 65%);
+  animation: landingShimmer 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.landing-flow-step {
+  animation: landingFlowPulse 2.4s ease-in-out infinite;
+}
+
+.landing-benefit-card {
+  animation: landingFadeIn 520ms ease-out both;
+}
+
 @keyframes modalIn {
   from {
     opacity: 0;
@@ -112,6 +160,43 @@ button {
   50% {
     opacity: 0.9;
     box-shadow: 0 0 0 12px rgba(255, 255, 255, 0.08);
+  }
+}
+
+@keyframes landingFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landingShimmer {
+  0%,
+  35% {
+    transform: translateX(-55%) rotate(8deg);
+  }
+
+  70%,
+  100% {
+    transform: translateX(55%) rotate(8deg);
+  }
+}
+
+@keyframes landingFlowPulse {
+  0%,
+  100% {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(0);
+  }
+
+  50% {
+    background-color: rgba(255, 255, 255, 0.18);
+    transform: translateY(-2px);
   }
 }
 

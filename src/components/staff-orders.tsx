@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/money";
 import { canTransition, minutesSince, statusLabels } from "@/lib/order-state";
 import type { StaffOrderDto } from "@/types/orderko";
 import { LogoutButton } from "@/components/logout-button";
+import { OrderKoBrand } from "@/components/orderko-brand";
 import { StaffInstallButton } from "@/components/staff-install-button";
 
 type Mode = "cashier" | "kitchen";
@@ -100,7 +101,7 @@ export function StaffOrders({ mode, restaurantName }: { mode: Mode; restaurantNa
       <section className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-4 border-b border-[#dbe4df] pb-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">OrderKo.com staff</p>
+            <OrderKoBrand label="OrderKo staff" />
             <h1 className="mt-2 text-3xl font-semibold">{mode === "cashier" ? "Cashier dashboard" : "Kitchen queue"}</h1>
             <p className="mt-1 text-sm text-slate-500">
               {mode === "cashier" ? "Confirm counter payments before kitchen work starts." : "Paid orders only, oldest first."}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
 import { Badge, Button } from "@/components/ui";
+import { OrderKoBrand } from "@/components/orderko-brand";
 
 type SuperAdminRestaurant = {
   id: string;
@@ -105,7 +106,7 @@ export function SuperAdminDashboard({
       <section className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-4 border-b border-[#dbe4df] pb-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">OrderKo.com operator</p>
+            <OrderKoBrand label="OrderKo operator" />
             <h1 className="mt-2 text-3xl font-semibold">Super admin</h1>
             <p className="mt-1 text-sm text-slate-500">Create restaurant tenants and prepare launch links.</p>
           </div>

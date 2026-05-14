@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
+import { OrderKoBrand } from "@/components/orderko-brand";
 import { Button } from "@/components/ui";
 import { StaffInstallButton } from "@/components/staff-install-button";
 
@@ -48,7 +49,7 @@ export function StaffLogin() {
   return (
     <main className="grid min-h-screen place-items-center bg-[#f6f8f5] px-4">
       <section className="w-full max-w-md rounded-lg border border-[#dbe4df] bg-white p-6 shadow-sm">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">OrderKo.com</p>
+        <OrderKoBrand />
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <h1 className="text-3xl font-semibold text-slate-950">Staff sign in</h1>
           <StaffInstallButton className="sm:shrink-0" />

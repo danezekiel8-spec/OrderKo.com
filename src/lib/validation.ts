@@ -41,6 +41,20 @@ export const staffCredentialsMutationSchema = z.object({
   adminPin: z.string().trim().min(4).max(12).optional().or(z.literal("")),
 });
 
+export const leadCreateSchema = z.object({
+  name: z.string().trim().min(2, "Enter your name.").max(80),
+  email: z
+    .string()
+    .trim()
+    .min(5, "Enter a valid email.")
+    .max(180)
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Enter a valid email."),
+  restaurantName: z.string().trim().min(2, "Enter the restaurant name.").max(120),
+  phone: z.string().trim().max(40).optional().or(z.literal("")),
+  message: z.string().trim().max(500).optional().or(z.literal("")),
+  companyWebsite: z.string().trim().max(200).optional().or(z.literal("")),
+});
+
 export const reservedRestaurantSlugs = new Set(["admin", "staff", "api", "order", "k", "r", "super-admin", "login"]);
 
 export const restaurantSlugSchema = z

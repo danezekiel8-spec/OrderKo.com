@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import type { MenuItemDto, MenuResponse, SelectedOptionDto } from "@/types/orderko";
 import { Button, Badge } from "@/components/ui";
+import { OrderKoBrand } from "@/components/orderko-brand";
 
 const G_CAFE_LOGO_SRC = "/assets/g-cafe-logo.jpg";
 const KIOSK_HERO_IMAGE_SRC = "/assets/g-cafe-kiosk-hero.jpg";
@@ -465,7 +466,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
         <div className={isKiosk ? "mx-auto max-w-[1500px]" : "mx-auto max-w-6xl"}>
           <div className="flex items-center justify-between gap-3 pb-2 sm:pb-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">OrderKo.com</p>
+              <OrderKoBrand />
               {isKiosk ? <p className="mt-1 text-sm font-semibold text-[#65756f]">Kiosk ordering</p> : null}
             </div>
             <div className={`flex items-center gap-2 ${isKiosk ? "gap-3" : ""}`}>

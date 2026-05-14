@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition, type ChangeEvent } from "r
 import { Button, Badge } from "@/components/ui";
 import { formatMoney } from "@/lib/money";
 import { LogoutButton } from "@/components/logout-button";
+import { OrderKoBrand } from "@/components/orderko-brand";
 
 type Category = { id: string; name: string; sortOrder: number };
 type AdminMenuItem = {
@@ -248,7 +249,7 @@ export function AdminDashboard({
       <section className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-4 border-b border-[#dbe4df] pb-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-700">OrderKo.com admin</p>
+            <OrderKoBrand label="OrderKo admin" />
             <h1 className="mt-2 text-3xl font-semibold">Owner dashboard</h1>
             <p className="mt-1 text-sm text-slate-500">Manage {settings.name}, QR ordering, and the operational basics.</p>
           </div>
