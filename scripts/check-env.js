@@ -36,6 +36,10 @@ function hasWeakPin(pin) {
   return pin.length < 4 || /^(\d)\1+$/.test(pin) || ["1111", "2222", "9999", "1234", "0000"].includes(pin);
 }
 
+function isEmail(input) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
+}
+
 loadDotEnv();
 
 [
@@ -97,6 +101,19 @@ if (production && (!qrBaseUrl.startsWith("https://") || isLocalUrl(qrBaseUrl))) 
 const cloudinaryValues = ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"].map(value);
 if (cloudinaryValues.some(Boolean) && cloudinaryValues.some((entry) => !entry)) {
   errors.push("Cloudinary environment variables must be configured together.");
+}
+
+const resendApiKey = value("RESEND_API_KEY");
+const leadNotificationEmail = value("LEAD_NOTIFICATION_EMAIL");
+const leadEmailFrom = value("LEAD_EMAIL_FROM");
+if (production && !resendApiKey) {
+  warnings.push("RESEND_API_KEY is not set; lead requests will save to the database but will not send email notifications.");
+}
+if (leadNotificationEmail && !isEmail(leadNotificationEmail)) {
+  errors.push("LEAD_NOTIFICATION_EMAIL must be a valid email address.");
+}
+if (resendApiKey && !leadEmailFrom) {
+  warnings.push("LEAD_EMAIL_FROM is not set; lead emails will use Resend's onboarding sender.");
 }
 
 for (const warning of warnings) console.warn(`Warning: ${warning}`);

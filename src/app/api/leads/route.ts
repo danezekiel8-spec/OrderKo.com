@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { sendLeadNotificationEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { leadCreateSchema } from "@/lib/validation";
 
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    await prisma.lead.create({
+    const lead = await prisma.lead.create({
       data: {
         name: body.name,
         email: body.email.toLowerCase(),
@@ -48,6 +49,15 @@ export async function POST(request: NextRequest) {
         status: "NEW",
       },
     });
+
+    try {
+      const emailResult = await sendLeadNotificationEmail(lead);
+      if (!emailResult.ok) {
+        console.warn("Lead notification email was not sent:", emailResult.reason);
+      }
+    } catch (emailError) {
+      console.warn("Lead notification email failed unexpectedly:", emailError);
+    }
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {
