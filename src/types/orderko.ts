@@ -27,6 +27,7 @@ export type MenuResponse = {
     address: string;
     currency: string;
     isOpen: boolean;
+    isServiceActive: boolean;
   };
   categories: MenuCategoryDto[];
 };

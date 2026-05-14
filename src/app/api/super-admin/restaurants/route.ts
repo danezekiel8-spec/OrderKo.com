@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       name: true,
       slug: true,
       isOpen: true,
+      isServiceActive: true,
       currency: true,
       createdAt: true,
       _count: { select: { categories: true, menuItems: true, orders: true } },
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
           address: body.address,
           currency: body.currency,
           isOpen: false,
+          isServiceActive: true,
           categories: { create: starterCategories },
         },
         select: {
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
           name: true,
           slug: true,
           isOpen: true,
+          isServiceActive: true,
           currency: true,
           createdAt: true,
         },

@@ -14,6 +14,7 @@ export default async function SuperAdminPage() {
       name: true,
       slug: true,
       isOpen: true,
+      isServiceActive: true,
       currency: true,
       createdAt: true,
       _count: { select: { categories: true, menuItems: true, orders: true } },

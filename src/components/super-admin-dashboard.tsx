@@ -8,6 +8,7 @@ type SuperAdminRestaurant = {
   name: string;
   slug: string;
   isOpen: boolean;
+  isServiceActive: boolean;
   currency: string;
   createdAt: string;
   _count: { categories: number; menuItems: number; orders: number };
@@ -74,6 +75,31 @@ export function SuperAdminDashboard({
     });
   }
 
+  function updateServiceStatus(restaurant: SuperAdminRestaurant, isServiceActive: boolean) {
+    if (!isServiceActive && !window.confirm(`Pause OrderKo service for ${restaurant.name}?`)) return;
+    setError("");
+
+    startTransition(async () => {
+      const response = await fetch(`/api/super-admin/restaurants/${restaurant.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isServiceActive }),
+      });
+      const result = (await response.json().catch(() => null)) as {
+        restaurant?: SuperAdminRestaurant;
+        error?: string;
+      } | null;
+      if (!response.ok || !result?.restaurant) {
+        setError(result?.error ?? "Could not update service status.");
+        return;
+      }
+      setRestaurants((current) =>
+        current.map((item) => (item.id === result.restaurant!.id ? result.restaurant! : item)),
+      );
+      setCreated((current) => (current?.id === result.restaurant!.id ? result.restaurant! : current));
+    });
+  }
+
   return (
     <main className="min-h-screen bg-[#f6f8f5] px-4 py-6 text-[#16211f]">
       <section className="mx-auto max-w-7xl">
@@ -121,7 +147,12 @@ export function SuperAdminDashboard({
               <h2 className="text-xl font-semibold">Restaurants</h2>
               <div className="mt-4 grid gap-3">
                 {restaurants.map((restaurant) => (
-                  <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+                  <RestaurantCard
+                    key={restaurant.id}
+                    restaurant={restaurant}
+                    busy={pending}
+                    onServiceStatusChange={(isServiceActive) => updateServiceStatus(restaurant, isServiceActive)}
+                  />
                 ))}
               </div>
             </section>
@@ -150,7 +181,15 @@ function CreatedSummary({ restaurant }: { restaurant: SuperAdminRestaurant }) {
   );
 }
 
-function RestaurantCard({ restaurant }: { restaurant: SuperAdminRestaurant }) {
+function RestaurantCard({
+  restaurant,
+  busy,
+  onServiceStatusChange,
+}: {
+  restaurant: SuperAdminRestaurant;
+  busy: boolean;
+  onServiceStatusChange: (isServiceActive: boolean) => void;
+}) {
   const links = useMemo(() => restaurantLinks(restaurant.slug), [restaurant.slug]);
   return (
     <article className="rounded-lg border border-slate-200 p-4">
@@ -159,6 +198,7 @@ function RestaurantCard({ restaurant }: { restaurant: SuperAdminRestaurant }) {
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-lg font-semibold">{restaurant.name}</h3>
             <Badge tone={restaurant.isOpen ? "good" : "warn"}>{restaurant.isOpen ? "Open" : "Closed"}</Badge>
+            <Badge tone={restaurant.isServiceActive ? "good" : "danger"}>{restaurant.isServiceActive ? "Active" : "Paused"}</Badge>
           </div>
           <p className="mt-1 text-sm text-slate-500">
             {restaurant.slug} · {restaurant.currency} · Created {new Date(restaurant.createdAt).toLocaleDateString()}
@@ -167,7 +207,17 @@ function RestaurantCard({ restaurant }: { restaurant: SuperAdminRestaurant }) {
             {restaurant._count.categories} categories · {restaurant._count.menuItems} items · {restaurant._count.orders} orders
           </p>
         </div>
-        <QrDownload slug={restaurant.slug} />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant={restaurant.isServiceActive ? "danger" : "primary"}
+            disabled={busy}
+            onClick={() => onServiceStatusChange(!restaurant.isServiceActive)}
+          >
+            {restaurant.isServiceActive ? "Pause service" : "Resume service"}
+          </Button>
+          <QrDownload slug={restaurant.slug} />
+        </div>
       </div>
       <div className="mt-4 grid gap-2">
         <CopyLine label="Customer" value={links.customer} />

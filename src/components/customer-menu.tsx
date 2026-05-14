@@ -95,6 +95,11 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
   );
   const hasBlockingUnavailableItem = unavailableItemIds.length > 0;
   const orderBusy = isPending || isSubmitting;
+  const serviceActive = menuData.restaurant.isServiceActive;
+  const orderingAvailable = menuData.restaurant.isOpen && serviceActive;
+  const orderingUnavailableMessage = serviceActive
+    ? `${menuData.restaurant.name} is currently closed for ordering. You can still browse the menu.`
+    : "Online ordering is temporarily unavailable. Please order at the counter.";
   const kioskTrackingUrl = kioskConfirmation?.trackingUrl ?? "";
   const hasActiveKioskSession = Boolean(
     kioskStarted || cart.length || customerName.trim() || customerNote.trim() || selectedItem || mobileCartOpen || error,
@@ -350,7 +355,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
   }
 
   async function placeOrder() {
-    if (!cart.length || orderBusy || hasBlockingUnavailableItem || !menuData.restaurant.isOpen) return;
+    if (!cart.length || orderBusy || hasBlockingUnavailableItem || !orderingAvailable) return;
     setError("");
     const submissionKey =
       submissionKeyRef.current ??
@@ -375,6 +380,10 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
         const latestMenu = await refreshMenuSnapshot().catch(() => null);
         if (latestMenu && !latestMenu.restaurant.isOpen) {
           setError(`${latestMenu.restaurant.name} is currently closed for ordering. You can still browse the menu.`);
+          return;
+        }
+        if (latestMenu && !latestMenu.restaurant.isServiceActive) {
+          setError("Online ordering is temporarily unavailable. Please order at the counter.");
           return;
         }
         if (latestMenu && hasUnavailableItemsIn(cart, latestMenu)) {
@@ -469,8 +478,8 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                 </button>
               ) : null}
               {!isKiosk ? (
-                <Badge tone={menuData.restaurant.isOpen ? "good" : "danger"}>
-                  {menuData.restaurant.isOpen ? "Open now" : "Closed"}
+                <Badge tone={orderingAvailable ? "good" : "danger"}>
+                  {orderingAvailable ? "Open now" : "Ordering paused"}
                 </Badge>
               ) : null}
             </div>
@@ -513,9 +522,9 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                   <span className="text-xs text-[#5c432a]">items</span>
                 </div>
               </div>
-              {!menuData.restaurant.isOpen ? (
+              {!orderingAvailable ? (
                 <p className="mt-5 rounded-2xl bg-rose-100 p-4 text-sm leading-6 text-rose-800">
-                  {menuData.restaurant.name} is currently closed for ordering. You can still browse the menu.
+                  {orderingUnavailableMessage}
                 </p>
               ) : null}
             </div>
@@ -539,8 +548,8 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                   {category.items.map((item) => (
                     <button
                       key={item.id}
-                      disabled={item.isSoldOut || !menuData.restaurant.isOpen}
-                      aria-disabled={item.isSoldOut || !menuData.restaurant.isOpen}
+                      disabled={item.isSoldOut || !orderingAvailable}
+                      aria-disabled={item.isSoldOut || !orderingAvailable}
                       onClick={() => setSelectedItem(item)}
                       className={`group overflow-hidden border border-[#e2ded4] bg-white text-left shadow-[0_8px_22px_rgba(28,39,35,0.05)] transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-[0_16px_38px_rgba(28,39,35,0.1)] active:scale-[0.99] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 ${isKiosk ? "min-h-52 rounded-3xl p-5" : "min-h-28 rounded-xl p-2.5 sm:min-h-36 sm:rounded-2xl sm:p-3 sm:shadow-[0_10px_30px_rgba(28,39,35,0.06)]"}`}
                     >
@@ -585,7 +594,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
               customerNote={customerNote}
               error={error}
               isPending={orderBusy}
-              restaurantOpen={menuData.restaurant.isOpen}
+              restaurantOpen={orderingAvailable}
               unavailableItemIds={unavailableItemIds}
               onNameChange={setCustomerName}
               onNoteChange={setCustomerNote}
@@ -611,7 +620,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
             </div>
             <span className={`font-semibold ${isKiosk ? "text-3xl" : "text-lg sm:text-xl"}`}>{formatMoney(totalCents, menuData.restaurant.currency)}</span>
           </div>
-          <Button className={`w-full rounded-xl ${isKiosk ? `min-h-16 text-xl ${kioskRedActionClass}` : ""}`} disabled={!cart.length || !cartLoaded} onClick={() => setMobileCartOpen(true)}>
+          <Button className={`w-full rounded-xl ${isKiosk ? `min-h-16 text-xl ${kioskRedActionClass}` : ""}`} disabled={!cart.length || !cartLoaded || !orderingAvailable} onClick={() => setMobileCartOpen(true)}>
             {cart.length ? "Review order" : "Cart is empty"}
           </Button>
         </div>
@@ -651,7 +660,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                 customerNote={customerNote}
                 error={error}
                 isPending={orderBusy}
-                restaurantOpen={menuData.restaurant.isOpen}
+                restaurantOpen={orderingAvailable}
                 unavailableItemIds={unavailableItemIds}
                 onNameChange={setCustomerName}
                 onNoteChange={setCustomerNote}
@@ -838,7 +847,7 @@ function CartPanel({
       {error ? <p className="mt-3 rounded-xl bg-rose-50 p-3 text-sm leading-6 text-rose-700">{error}</p> : null}
       {!restaurantOpen ? (
         <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-800">
-          Ordering is paused right now. You can review the cart, but checkout is disabled until the restaurant reopens.
+          Online ordering is temporarily unavailable. Please order at the counter.
         </p>
       ) : null}
       {hasUnavailableItems ? (
@@ -902,6 +911,11 @@ function KioskStartScreen({
   logoSrc?: string;
   onStart: () => void;
 }) {
+  const orderingAvailable = restaurant.isOpen && restaurant.isServiceActive;
+  const unavailableMessage = restaurant.isServiceActive
+    ? "This restaurant is currently closed for ordering. Please ask the counter for help."
+    : "Online ordering is temporarily unavailable. Please order at the counter.";
+
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f4ed] p-8 text-[#182522]">
       <section className="relative isolate flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col items-center justify-center gap-7 overflow-hidden rounded-[2rem] border border-[#c9a46f] bg-[#2f2418] p-7 text-center text-white shadow-[0_28px_90px_rgba(28,39,35,0.2)] sm:p-10 lg:p-14">
@@ -923,14 +937,14 @@ function KioskStartScreen({
         </div>
 
         <div className="w-full max-w-3xl">
-          {!restaurant.isOpen ? (
+          {!orderingAvailable ? (
             <p className="mx-auto mt-8 max-w-2xl rounded-2xl bg-rose-50 p-4 text-lg leading-7 text-rose-700">
-              This restaurant is currently closed for ordering. Please ask the counter for help.
+              {unavailableMessage}
             </p>
           ) : null}
           <button
             className="kiosk-cta-pulse mt-10 min-h-24 w-full max-w-md rounded-full bg-[#b42318] px-8 py-4 text-6xl font-bold text-white shadow-[0_18px_50px_rgba(180,35,24,0.34)] transition hover:bg-[#981b12] active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-600"
-            disabled={!restaurant.isOpen}
+            disabled={!orderingAvailable}
             onClick={onStart}
             style={{ fontSize: "3rem", fontWeight: 700, lineHeight: 1.1 }}
           >

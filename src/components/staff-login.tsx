@@ -21,7 +21,7 @@ function safeNextPath(value: string | null, fallback: string) {
 export function StaffLogin() {
   const searchParams = useSearchParams();
   const [role, setRole] = useState<StaffRole>("cashier");
-  const [restaurantSlug, setRestaurantSlug] = useState("g-cafe");
+  const [restaurantSlug, setRestaurantSlug] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -68,12 +68,12 @@ export function StaffLogin() {
           ))}
         </div>
         <label className="mt-5 block text-sm font-semibold">
-          Restaurant slug
+          Username
           <input
             value={restaurantSlug}
             onChange={(event) => setRestaurantSlug(event.target.value.toLowerCase().trim())}
             className="mt-2 min-h-12 w-full rounded-lg border border-slate-300 px-3 text-lg"
-            placeholder="g-cafe"
+            placeholder="Restaurant username"
             autoCapitalize="none"
             autoCorrect="off"
           />

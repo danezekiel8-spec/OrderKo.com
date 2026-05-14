@@ -32,6 +32,12 @@ export async function POST(
     if (!restaurant.isOpen) {
       return NextResponse.json({ error: "This restaurant is currently closed." }, { status: 409 });
     }
+    if (!restaurant.isServiceActive) {
+      return NextResponse.json(
+        { error: "Online ordering is temporarily unavailable. Please order at the counter." },
+        { status: 409 },
+      );
+    }
 
     const existing = await prisma.order.findFirst({
       where: { restaurantId: restaurant.id, submissionKey: body.submissionKey },
