@@ -27,6 +27,23 @@ export default async function SuperAdminPage() {
     },
   });
 
+  const leads = await prisma.lead.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      restaurantName: true,
+      phone: true,
+      message: true,
+      status: true,
+      source: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
   return (
     <SuperAdminDashboard
       initialRestaurants={restaurants.map((restaurant) => ({
@@ -37,6 +54,11 @@ export default async function SuperAdminPage() {
           ...credential,
           updatedAt: credential.updatedAt.toISOString(),
         })),
+      }))}
+      initialLeads={leads.map((lead) => ({
+        ...lead,
+        createdAt: lead.createdAt.toISOString(),
+        updatedAt: lead.updatedAt.toISOString(),
       }))}
     />
   );

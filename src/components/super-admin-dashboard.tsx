@@ -25,8 +25,22 @@ type SuperAdminRestaurant = {
   _count: { categories: number; menuItems: number; orders: number };
 };
 
+type SuperAdminLead = {
+  id: string;
+  name: string;
+  email: string;
+  restaurantName: string;
+  phone: string | null;
+  message: string | null;
+  status: string;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type CreatedRestaurant = SuperAdminRestaurant | null;
 type StatusFilter = "all" | "active" | "paused" | "closed" | "kiosk-off";
+type LeadStatus = "NEW" | "CONTACTED" | "QUALIFIED" | "CLOSED";
 
 function absoluteUrl(path: string) {
   if (typeof window === "undefined") return path;
@@ -48,10 +62,13 @@ function dateLabel(value: string) {
 
 export function SuperAdminDashboard({
   initialRestaurants,
+  initialLeads,
 }: {
   initialRestaurants: SuperAdminRestaurant[];
+  initialLeads: SuperAdminLead[];
 }) {
   const [restaurants, setRestaurants] = useState(initialRestaurants);
+  const [leads, setLeads] = useState(initialLeads);
   const [created, setCreated] = useState<CreatedRestaurant>(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -89,6 +106,22 @@ export function SuperAdminDashboard({
       ].some((value) => value.toLowerCase().includes(normalized));
     });
   }, [filter, query, restaurants]);
+
+  const filteredLeads = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return leads;
+    return leads.filter((lead) =>
+      [
+        lead.name,
+        lead.email,
+        lead.restaurantName,
+        lead.phone ?? "",
+        lead.message ?? "",
+        lead.status,
+        lead.source,
+      ].some((value) => value.toLowerCase().includes(normalized)),
+    );
+  }, [leads, query]);
 
   function logout() {
     startTransition(async () => {
@@ -149,6 +182,26 @@ export function SuperAdminDashboard({
     });
   }
 
+  function updateLeadStatus(id: string, status: LeadStatus) {
+    setError("");
+    startTransition(async () => {
+      const response = await fetch(`/api/super-admin/leads/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const result = (await response.json().catch(() => null)) as {
+        lead?: SuperAdminLead;
+        error?: string;
+      } | null;
+      if (!response.ok || !result?.lead) {
+        setError(result?.error ?? "Could not update lead status.");
+        return;
+      }
+      setLeads((current) => current.map((lead) => (lead.id === result.lead!.id ? result.lead! : lead)));
+    });
+  }
+
   function toggleExpanded(id: string) {
     setExpandedIds((current) => {
       const next = new Set(current);
@@ -172,7 +225,7 @@ export function SuperAdminDashboard({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="min-h-11 rounded-lg border border-slate-300 px-3 text-sm"
-              placeholder="Search restaurants, notes, links..."
+              placeholder="Search restaurants, leads, notes..."
             />
             <select
               value={filter}
@@ -219,6 +272,7 @@ export function SuperAdminDashboard({
 
           <div className="space-y-6">
             {created ? <CreatedSummary restaurant={created} /> : null}
+            <LeadsPanel leads={filteredLeads} total={leads.length} busy={pending} onUpdateStatus={updateLeadStatus} />
             <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -243,6 +297,83 @@ export function SuperAdminDashboard({
         </div>
       </section>
     </main>
+  );
+}
+
+function leadStatusTone(status: string): "neutral" | "good" | "warn" | "danger" {
+  if (status === "NEW") return "warn";
+  if (status === "CONTACTED") return "neutral";
+  if (status === "QUALIFIED") return "good";
+  if (status === "CLOSED") return "danger";
+  return "neutral";
+}
+
+function statusLabel(status: string) {
+  return status.toLowerCase().replace(/_/g, " ");
+}
+
+function LeadsPanel({
+  leads,
+  total,
+  busy,
+  onUpdateStatus,
+}: {
+  leads: SuperAdminLead[];
+  total: number;
+  busy: boolean;
+  onUpdateStatus: (id: string, status: LeadStatus) => void;
+}) {
+  return (
+    <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Demo requests</h2>
+          <p className="mt-1 text-sm text-slate-500">{leads.length} shown from {total} recent leads.</p>
+        </div>
+        <Badge tone={leads.some((lead) => lead.status === "NEW") ? "warn" : "good"}>
+          {leads.filter((lead) => lead.status === "NEW").length} new
+        </Badge>
+      </div>
+
+      <div className="mt-4 grid gap-3">
+        {leads.length ? (
+          leads.map((lead) => (
+            <article key={lead.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold">{lead.restaurantName}</h3>
+                    <Badge tone={leadStatusTone(lead.status)}>{statusLabel(lead.status)}</Badge>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {lead.name} · <a className="font-semibold text-teal-700 hover:underline" href={`mailto:${lead.email}`}>{lead.email}</a>
+                  </p>
+                  {lead.phone ? <p className="mt-1 text-sm text-slate-500">Phone: {lead.phone}</p> : null}
+                  <p className="mt-1 text-xs font-semibold text-slate-400">Submitted {dateLabel(lead.createdAt)}</p>
+                </div>
+                <select
+                  value={lead.status}
+                  disabled={busy}
+                  onChange={(event) => onUpdateStatus(lead.id, event.target.value as LeadStatus)}
+                  className="min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold"
+                  aria-label={`Update status for ${lead.restaurantName}`}
+                >
+                  <option value="NEW">New</option>
+                  <option value="CONTACTED">Contacted</option>
+                  <option value="QUALIFIED">Qualified</option>
+                  <option value="CLOSED">Closed</option>
+                </select>
+              </div>
+              {lead.message ? <p className="mt-3 rounded-lg bg-white p-3 text-sm leading-6 text-slate-600">{lead.message}</p> : null}
+            </article>
+          ))
+        ) : (
+          <p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+            No demo requests match the current search.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 
