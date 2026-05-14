@@ -28,6 +28,7 @@ export type MenuResponse = {
     currency: string;
     isOpen: boolean;
     isServiceActive: boolean;
+    isKioskEnabled: boolean;
   };
   categories: MenuCategoryDto[];
 };

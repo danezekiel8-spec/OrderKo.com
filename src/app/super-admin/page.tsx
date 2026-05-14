@@ -15,8 +15,14 @@ export default async function SuperAdminPage() {
       slug: true,
       isOpen: true,
       isServiceActive: true,
+      isKioskEnabled: true,
+      superAdminNotes: true,
       currency: true,
       createdAt: true,
+      updatedAt: true,
+      staffCredentials: {
+        select: { role: true, isActive: true, updatedAt: true },
+      },
       _count: { select: { categories: true, menuItems: true, orders: true } },
     },
   });
@@ -26,6 +32,11 @@ export default async function SuperAdminPage() {
       initialRestaurants={restaurants.map((restaurant) => ({
         ...restaurant,
         createdAt: restaurant.createdAt.toISOString(),
+        updatedAt: restaurant.updatedAt.toISOString(),
+        staffCredentials: restaurant.staffCredentials.map((credential) => ({
+          ...credential,
+          updatedAt: credential.updatedAt.toISOString(),
+        })),
       }))}
     />
   );

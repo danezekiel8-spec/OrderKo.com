@@ -32,6 +32,8 @@ model Restaurant {
   currency         String            @default("NZD")
   isOpen           Boolean           @default(true)
   isServiceActive  Boolean           @default(true)
+  isKioskEnabled   Boolean           @default(true)
+  superAdminNotes  String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   categories       Category[]

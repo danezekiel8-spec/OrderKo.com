@@ -28,8 +28,14 @@ export async function GET(request: NextRequest) {
       slug: true,
       isOpen: true,
       isServiceActive: true,
+      isKioskEnabled: true,
+      superAdminNotes: true,
       currency: true,
       createdAt: true,
+      updatedAt: true,
+      staffCredentials: {
+        select: { role: true, isActive: true, updatedAt: true },
+      },
       _count: { select: { categories: true, menuItems: true, orders: true } },
     },
   });
@@ -38,6 +44,11 @@ export async function GET(request: NextRequest) {
     restaurants: restaurants.map((restaurant) => ({
       ...restaurant,
       createdAt: restaurant.createdAt.toISOString(),
+      updatedAt: restaurant.updatedAt.toISOString(),
+      staffCredentials: restaurant.staffCredentials.map((credential) => ({
+        ...credential,
+        updatedAt: credential.updatedAt.toISOString(),
+      })),
     })),
   });
 }
@@ -59,6 +70,7 @@ export async function POST(request: NextRequest) {
           currency: body.currency,
           isOpen: false,
           isServiceActive: true,
+          isKioskEnabled: true,
           categories: { create: starterCategories },
         },
         select: {
@@ -67,8 +79,14 @@ export async function POST(request: NextRequest) {
           slug: true,
           isOpen: true,
           isServiceActive: true,
+          isKioskEnabled: true,
+          superAdminNotes: true,
           currency: true,
           createdAt: true,
+          updatedAt: true,
+          staffCredentials: {
+            select: { role: true, isActive: true, updatedAt: true },
+          },
         },
       });
 
@@ -103,6 +121,11 @@ export async function POST(request: NextRequest) {
         restaurant: {
           ...restaurant,
           createdAt: restaurant.createdAt.toISOString(),
+          updatedAt: restaurant.updatedAt.toISOString(),
+          staffCredentials: restaurant.staffCredentials.map((credential) => ({
+            ...credential,
+            updatedAt: credential.updatedAt.toISOString(),
+          })),
           _count: { categories: starterCategories.length, menuItems: 0, orders: 0 },
         },
       },

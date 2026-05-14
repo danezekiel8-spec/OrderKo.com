@@ -30,6 +30,7 @@ export async function getRestaurantMenuData(slug: string): Promise<MenuResponse 
       currency: restaurant.currency,
       isOpen: restaurant.isOpen,
       isServiceActive: restaurant.isServiceActive,
+      isKioskEnabled: restaurant.isKioskEnabled,
     },
     categories: restaurant.categories.map((category) => ({
       id: category.id,

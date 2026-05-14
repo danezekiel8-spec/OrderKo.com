@@ -446,6 +446,20 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
     );
   }
 
+  if (isKiosk && !menuData.restaurant.isKioskEnabled) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#f7f4ed] px-5 text-[#182522]">
+        <section className="max-w-xl rounded-3xl border border-[#e0ddd4] bg-white p-8 text-center shadow-[0_20px_70px_rgba(28,39,35,0.12)]">
+          <OrderKoBrand className="justify-center" />
+          <h1 className="mt-5 text-3xl font-semibold">Kiosk ordering is unavailable</h1>
+          <p className="mt-3 leading-7 text-[#65756f]">
+            Please ask the counter for help. QR ordering may still be available from your phone.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
   if (isKiosk && !kioskStarted) {
     return (
       <KioskStartScreen
