@@ -41,15 +41,51 @@ export const staffCredentialsMutationSchema = z.object({
   adminPin: z.string().trim().min(4).max(12).optional().or(z.literal("")),
 });
 
+export const reservedRestaurantSlugs = new Set(["admin", "staff", "api", "order", "k", "r", "super-admin", "login"]);
+
+export const restaurantSlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(2)
+  .max(80)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and single hyphens between words.")
+  .refine((slug) => !reservedRestaurantSlugs.has(slug), "This slug is reserved by OrderKo.");
+
+const restaurantPinSchema = z.string().trim().min(4, "PIN must be at least 4 characters.").max(12, "PIN must be 12 characters or fewer.");
+
+export const superAdminRestaurantCreateSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120),
+    slug: restaurantSlugSchema,
+    description: z.string().trim().min(2).max(500),
+    address: z.string().trim().min(2).max(300),
+    currency: z.string().trim().toUpperCase().length(3, "Currency must be a 3-letter code.").default("PHP"),
+    adminPin: restaurantPinSchema,
+    adminPinConfirm: restaurantPinSchema,
+    cashierPin: restaurantPinSchema,
+    cashierPinConfirm: restaurantPinSchema,
+    kitchenPin: restaurantPinSchema,
+    kitchenPinConfirm: restaurantPinSchema,
+  })
+  .refine((data) => data.adminPin === data.adminPinConfirm, {
+    message: "Admin PIN confirmation does not match.",
+    path: ["adminPinConfirm"],
+  })
+  .refine((data) => data.cashierPin === data.cashierPinConfirm, {
+    message: "Cashier PIN confirmation does not match.",
+    path: ["cashierPinConfirm"],
+  })
+  .refine((data) => data.kitchenPin === data.kitchenPinConfirm, {
+    message: "Kitchen PIN confirmation does not match.",
+    path: ["kitchenPinConfirm"],
+  });
+
 export const restaurantSettingsSchema = z.object({
   name: z.string().min(2).max(120),
   description: z.string().min(2).max(500),
   address: z.string().min(2).max(300),
-  slug: z
-    .string()
-    .min(2)
-    .max(80)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens."),
+  slug: restaurantSlugSchema,
   currency: z.string().min(3).max(3),
   isOpen: z.boolean().default(true),
 });

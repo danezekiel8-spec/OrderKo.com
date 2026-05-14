@@ -67,6 +67,13 @@ if (production && (!pinSecret || pinSecret.length < 32 || ["development-only-sec
   warnings.push("STAFF_PIN_SECRET is not set; staff PIN hashes will use STAFF_SESSION_SECRET locally.");
 }
 
+const superAdminSecret = value("ORDERKO_SUPER_ADMIN_SECRET");
+if (production && (!superAdminSecret || superAdminSecret.length < 32 || ["development-super-admin-secret", "replace-this-before-production"].includes(superAdminSecret))) {
+  errors.push("ORDERKO_SUPER_ADMIN_SECRET must be a non-placeholder value with at least 32 characters.");
+} else if (!production && !superAdminSecret) {
+  warnings.push("ORDERKO_SUPER_ADMIN_SECRET is not set; local super-admin uses a development fallback.");
+}
+
 if (value("ORDERKO_DEFAULT_RESTAURANT_SLUG") && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value("ORDERKO_DEFAULT_RESTAURANT_SLUG"))) {
   errors.push("ORDERKO_DEFAULT_RESTAURANT_SLUG must be a lowercase restaurant slug.");
 }
