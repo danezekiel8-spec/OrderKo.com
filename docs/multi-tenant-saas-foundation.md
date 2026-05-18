@@ -26,11 +26,9 @@ Production should set:
 - `STAFF_SESSION_SECRET`
 - `STAFF_PIN_SECRET`
 - `ORDERKO_DEFAULT_RESTAURANT_SLUG`
-- `ADMIN_PIN`
-- `CASHIER_PIN`
-- `KITCHEN_PIN`
+- `ORDERKO_SUPER_ADMIN_SECRET`
 
-The PIN env vars are used for bootstrap/default credential creation. After launch, restaurant-specific PINs can be changed from the admin dashboard.
+Restaurant-specific PINs are created and reset from Super Admin or the restaurant admin dashboard. Production startup should not depend on seed scripts for live tenant access.
 
 ## Data Isolation Rules
 
@@ -64,7 +62,5 @@ Order creation still allocates the next visible queue number by restaurant, but 
 ## Remaining SaaS Work
 
 - Add owner email/password or magic-link login before broad public signup.
-- Add a private OrderKo super-admin for creating/supporting restaurants.
-- Add restaurant creation/onboarding UI instead of relying on bootstrap scripts.
 - Add billing/plan state later; do not add payments before pilot validation.
 - Run the same isolation tests on production after Render migration deploy.

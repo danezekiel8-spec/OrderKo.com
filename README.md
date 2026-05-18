@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OrderKo
 
-## Getting Started
+OrderKo is a lightweight QR and kiosk ordering system for small restaurants, cafes, takeaway shops, milk tea stores, and food stalls.
 
-First, run the development server:
+## Core Routes
+
+- Landing page: `/`
+- Customer menu: `/r/[slug]`
+- Kiosk ordering: `/k/[slug]`
+- Staff login: `/staff/login`
+- Cashier: `/staff/cashier`
+- Kitchen: `/staff/kitchen`
+- Restaurant admin: `/admin`
+- Super Admin: `/super-admin`
+
+## Local Development
 
 ```bash
+npm install
+npm run db:migrate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production Checks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run env:check:production
+npm run lint
+npm run typecheck
+npm run build
+```
 
-## Learn More
+Render uses:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build:render
+npm run start:render
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Production startup deploys Prisma migrations. Restaurants should be created and managed from `/super-admin`; do not rely on seed scripts for live tenant setup.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Launch Docs
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `docs/pilot-launch-checklist.md`
+- `docs/production-readiness-checklist.md`
+- `docs/render-deployment-runbook.md`
+- `docs/first-restaurant-onboarding-template.md`
+- `docs/staff-pilot-sop.md`
+- `docs/go-no-go-checklist.md`
+- `docs/launch-issue-log.md`

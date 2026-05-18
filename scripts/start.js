@@ -14,7 +14,6 @@ const isProductionPostgres =
 if (isProductionPostgres) {
   run("npx", ["prisma", "generate", "--schema", "prisma/postgres/schema.prisma"]);
   run("npx", ["prisma", "migrate", "deploy", "--schema", "prisma/postgres/schema.prisma"]);
-  run("node", ["scripts/bootstrap-g-cafe.js"]);
 }
 
 run("npx", ["next", "start"]);

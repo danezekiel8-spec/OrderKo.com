@@ -2,24 +2,26 @@
 
 ## Cashier
 
-1. Open `/staff/cashier`.
-2. Log in with the cashier PIN.
-3. Search or scan the customer's visible order number.
-4. Confirm the amount with the customer.
-5. Take payment at the counter.
-6. Tap Mark Paid.
+1. Open `/staff/login`.
+2. Select Cashier.
+3. Enter the restaurant username and cashier PIN.
+4. Search or scan the customer's visible order number.
+5. Confirm the amount with the customer.
+6. Take payment at the counter.
+7. Tap Mark Paid.
 
 Unpaid orders do not appear in the kitchen queue. Cancel only when the customer confirms they no longer want the order.
 
 ## Kitchen
 
-1. Open `/staff/kitchen`.
-2. Log in with the kitchen PIN.
-3. Work from the oldest paid order first.
-4. Tap Preparing when work starts.
-5. Tap Almost Ready when the order is nearly complete.
-6. Tap Ready when the customer can collect it.
-7. Tap Completed after pickup.
+1. Open `/staff/login`.
+2. Select Kitchen.
+3. Enter the restaurant username and kitchen PIN.
+4. Work from the oldest paid order first.
+5. Tap Preparing when work starts.
+6. Tap Almost Ready when the order is nearly complete.
+7. Tap Ready when the customer can collect it.
+8. Tap Completed after pickup.
 
 ## Admin
 

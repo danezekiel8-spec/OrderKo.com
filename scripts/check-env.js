@@ -45,14 +45,15 @@ loadDotEnv();
 [
   "DATABASE_URL",
   "STAFF_SESSION_SECRET",
-  "ADMIN_PIN",
-  "CASHIER_PIN",
-  "KITCHEN_PIN",
   "ORDERKO_QR_BASE_URL",
   "CLOUDINARY_CLOUD_NAME",
   "CLOUDINARY_API_KEY",
   "CLOUDINARY_API_SECRET",
 ].forEach(requireValue);
+
+if (production) {
+  ["STAFF_PIN_SECRET", "ORDERKO_SUPER_ADMIN_SECRET"].forEach(requireValue);
+}
 
 const databaseUrl = value("DATABASE_URL");
 if (production && !/^postgres(ql)?:\/\//i.test(databaseUrl)) {
@@ -84,6 +85,7 @@ if (value("ORDERKO_DEFAULT_RESTAURANT_SLUG") && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.te
 
 for (const name of ["ADMIN_PIN", "CASHIER_PIN", "KITCHEN_PIN"]) {
   const pin = value(name);
+  if (!pin) continue;
   if (production && hasWeakPin(pin)) {
     errors.push(`${name} must be changed from demo/weak values before production.`);
   } else if (!production && hasWeakPin(pin)) {

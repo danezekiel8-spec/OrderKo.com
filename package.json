@@ -20,7 +20,7 @@
     "db:deploy:postgres": "prisma migrate deploy --schema prisma/postgres/schema.prisma",
     "db:bootstrap:g-cafe": "node scripts/bootstrap-g-cafe.js",
     "build:render": "npm run env:check:production && npm run db:generate:postgres && npm run build",
-    "start:render": "npm run db:generate:postgres && npm run db:deploy:postgres && npm run db:bootstrap:g-cafe && npm run start:next",
+    "start:render": "npm run db:generate:postgres && npm run db:deploy:postgres && npm run start:next",
     "db:reset": "ORDERKO_ALLOW_DB_RESET=local-dev-only node scripts/setup-db.js --reset",
     "db:seed": "node prisma/seed.js",
     "db:studio": "prisma studio",
