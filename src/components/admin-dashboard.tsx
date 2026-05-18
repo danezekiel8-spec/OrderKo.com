@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ChangeEvent } from "react";
 import { Button, Badge } from "@/components/ui";
 import { formatMoney } from "@/lib/money";
 import { LogoutButton } from "@/components/logout-button";
@@ -16,6 +16,14 @@ type AdminMenuItem = {
   imageUrl: string | null;
   optionGroupsJson: string;
   isSoldOut: boolean;
+};
+type EditableOption = { id: string; name: string; price: string };
+type EditableOptionGroup = {
+  id: string;
+  name: string;
+  required: boolean;
+  multiple: boolean;
+  options: EditableOption[];
 };
 type RestaurantSettings = {
   id: string;
@@ -53,6 +61,9 @@ export function AdminDashboard({
   const [categoryList, setCategoryList] = useState(categories);
   const [items, setItems] = useState(menuItems);
   const [editing, setEditing] = useState<AdminMenuItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [optionGroups, setOptionGroups] = useState<EditableOptionGroup[]>([]);
+  const [formHighlight, setFormHighlight] = useState(false);
   const [error, setError] = useState("");
   const [settingsError, setSettingsError] = useState("");
   const [uploadError, setUploadError] = useState("");
@@ -63,6 +74,7 @@ export function AdminDashboard({
   const [isUploading, setIsUploading] = useState(false);
   const [isBrandingUploading, setIsBrandingUploading] = useState(false);
   const [pending, startTransition] = useTransition();
+  const itemFormRef = useRef<HTMLFormElement | null>(null);
   const sortedCategories = useMemo(
     () => [...categoryList].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
     [categoryList],
@@ -78,6 +90,17 @@ export function AdminDashboard({
     }
     return counts;
   }, [items]);
+  const filteredItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return items;
+    return items.filter((item) =>
+      [
+        item.name,
+        item.description,
+        categoryById.get(item.categoryId)?.name ?? "",
+      ].some((value) => value.toLowerCase().includes(query)),
+    );
+  }, [categoryById, items, searchQuery]);
   const readinessChecks = useMemo(
     () => {
       const activeStaffRoles = new Set(
@@ -194,13 +217,18 @@ export function AdminDashboard({
       setError("Wait for the image upload to finish before saving.");
       return;
     }
+    const optionGroupsResult = buildOptionGroupsJson(optionGroups);
+    if (!optionGroupsResult.ok) {
+      setError(optionGroupsResult.error);
+      return;
+    }
     const payload = {
       name: String(formData.get("name") ?? ""),
       description: String(formData.get("description") ?? ""),
       priceCents: Math.round(Number(formData.get("price") ?? 0) * 100),
       categoryId: String(formData.get("categoryId") ?? ""),
       imageUrl: imageUrl.trim(),
-      optionGroupsJson: String(formData.get("optionGroupsJson") ?? "[]"),
+      optionGroupsJson: optionGroupsResult.value,
       isSoldOut: formData.get("isSoldOut") === "on",
     };
     if (!payload.categoryId) {
@@ -227,6 +255,7 @@ export function AdminDashboard({
       );
       setEditing(null);
       setImageUrl("");
+      setOptionGroups([]);
       setUploadError("");
       setFormVersion((current) => current + 1);
     });
@@ -235,13 +264,20 @@ export function AdminDashboard({
   function beginEditing(item: AdminMenuItem) {
     setEditing(item);
     setImageUrl(item.imageUrl ?? "");
+    setOptionGroups(parseEditableOptionGroups(item.optionGroupsJson));
     setUploadError("");
     setError("");
+    setFormHighlight(true);
+    window.setTimeout(() => {
+      itemFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+    window.setTimeout(() => setFormHighlight(false), 1200);
   }
 
   function cancelEditing() {
     setEditing(null);
     setImageUrl("");
+    setOptionGroups([]);
     setUploadError("");
     setError("");
   }
@@ -443,8 +479,15 @@ export function AdminDashboard({
 
           <StaffPinManager />
 
-          <form key={editing?.id ?? `new-${formVersion}`} action={save} className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-semibold">{editing ? "Edit item" : "Add menu item"}</h2>
+          <form
+            ref={itemFormRef}
+            key={editing?.id ?? `new-${formVersion}`}
+            action={save}
+            className={`scroll-mt-6 rounded-lg border bg-white p-5 shadow-sm transition ${
+              formHighlight ? "border-teal-500 ring-4 ring-teal-100" : "border-[#dbe4df]"
+            }`}
+          >
+            <h2 className="text-xl font-semibold">{editing ? `Editing: ${editing.name}` : "Add menu item"}</h2>
             {error ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
             <Field name="name" label="Name" defaultValue={editing?.name ?? ""} />
             <label className="mt-4 block text-sm font-semibold">
@@ -528,14 +571,11 @@ export function AdminDashboard({
                 />
               </label>
             </div>
-            <label className="mt-4 block text-sm font-semibold">
-              Add-ons/customizations JSON
-              <textarea
-                name="optionGroupsJson"
-                defaultValue={editing?.optionGroupsJson ?? "[]"}
-                className="mt-2 min-h-28 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs"
-              />
-            </label>
+            <CustomizationBuilder
+              groups={optionGroups}
+              currency={settings.currency}
+              onChange={setOptionGroups}
+            />
             <label className="mt-4 flex min-h-11 items-center gap-3 text-sm font-semibold">
               <input name="isSoldOut" type="checkbox" defaultChecked={editing?.isSoldOut ?? false} className="size-5" />
               Sold out
@@ -561,9 +601,32 @@ export function AdminDashboard({
             </section>
 
             <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
-              <h2 className="text-xl font-semibold">Menu items</h2>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Menu items</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {searchQuery.trim() ? `${filteredItems.length} result${filteredItems.length === 1 ? "" : "s"} from ${items.length} items.` : `${items.length} item${items.length === 1 ? "" : "s"}.`}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <label className="block text-sm font-semibold">
+                    <span className="sr-only">Search menu items</span>
+                    <input
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Search menu items"
+                      className="min-h-11 w-full rounded-lg border border-slate-300 px-3 sm:w-64"
+                    />
+                  </label>
+                  {searchQuery ? (
+                    <Button type="button" variant="secondary" onClick={() => setSearchQuery("")}>
+                      Clear
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
               <div className="mt-4 grid gap-3">
-                {items.map((item) => (
+                {filteredItems.map((item) => (
                   <div key={item.id} className="rounded-lg border border-slate-200 p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex gap-3">
@@ -596,6 +659,11 @@ export function AdminDashboard({
                     </div>
                   </div>
                 ))}
+                {!filteredItems.length ? (
+                  <p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+                    {items.length ? "No menu items match your search." : "No menu items yet. Add your first item from the form."}
+                  </p>
+                ) : null}
               </div>
             </section>
           </div>
@@ -611,6 +679,216 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-2 text-3xl font-semibold">{value}</p>
     </div>
+  );
+}
+
+function makeOptionId() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function emptyOption(): EditableOption {
+  return { id: makeOptionId(), name: "", price: "" };
+}
+
+function emptyOptionGroup(): EditableOptionGroup {
+  return {
+    id: makeOptionId(),
+    name: "",
+    required: false,
+    multiple: false,
+    options: [emptyOption()],
+  };
+}
+
+function parseEditableOptionGroups(value: string): EditableOptionGroup[] {
+  try {
+    const parsed = JSON.parse(value || "[]") as {
+      name?: string;
+      required?: boolean;
+      maxChoices?: number;
+      options?: { name?: string; priceCents?: number }[];
+    }[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((group) => ({
+      id: makeOptionId(),
+      name: String(group.name ?? ""),
+      required: Boolean(group.required),
+      multiple: Number(group.maxChoices ?? 1) > 1,
+      options: Array.isArray(group.options) && group.options.length
+        ? group.options.map((option) => ({
+            id: makeOptionId(),
+            name: String(option.name ?? ""),
+            price: option.priceCents ? (Number(option.priceCents) / 100).toFixed(2) : "",
+          }))
+        : [emptyOption()],
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function buildOptionGroupsJson(groups: EditableOptionGroup[]): { ok: true; value: string } | { ok: false; error: string } {
+  const cleaned = [];
+  for (const group of groups) {
+    const groupHasContent = group.name.trim() || group.options.some((option) => option.name.trim() || option.price.trim());
+    if (!groupHasContent) continue;
+    if (!group.name.trim()) return { ok: false, error: "Each customization group needs a name." };
+
+    const options = [];
+    for (const option of group.options) {
+      const optionHasContent = option.name.trim() || option.price.trim();
+      if (!optionHasContent) continue;
+      if (!option.name.trim()) return { ok: false, error: `Add a name for every option in ${group.name}.` };
+      const price = Number(option.price || 0);
+      if (!Number.isFinite(price) || price < 0) return { ok: false, error: `Enter a valid price for ${option.name}.` };
+      options.push({ name: option.name.trim(), priceCents: Math.round(price * 100) });
+    }
+
+    if (!options.length) return { ok: false, error: `${group.name} needs at least one option.` };
+    cleaned.push({
+      name: group.name.trim(),
+      required: group.required,
+      maxChoices: group.multiple ? Math.max(2, options.length) : 1,
+      options,
+    });
+  }
+  return { ok: true, value: JSON.stringify(cleaned) };
+}
+
+function CustomizationBuilder({
+  groups,
+  currency,
+  onChange,
+}: {
+  groups: EditableOptionGroup[];
+  currency: string;
+  onChange: (groups: EditableOptionGroup[]) => void;
+}) {
+  function updateGroup(id: string, patch: Partial<EditableOptionGroup>) {
+    onChange(groups.map((group) => (group.id === id ? { ...group, ...patch } : group)));
+  }
+
+  function updateOption(groupId: string, optionId: string, patch: Partial<EditableOption>) {
+    onChange(groups.map((group) => (
+      group.id === groupId
+        ? { ...group, options: group.options.map((option) => (option.id === optionId ? { ...option, ...patch } : option)) }
+        : group
+    )));
+  }
+
+  return (
+    <section className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">Add-ons and customizations</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Use this for sizes, sugar level, ice, toppings, or paid extras. Customers will see these choices before adding to cart.
+          </p>
+        </div>
+        <Button type="button" variant="secondary" onClick={() => onChange([...groups, emptyOptionGroup()])}>
+          Add group
+        </Button>
+      </div>
+
+      {groups.length ? (
+        <div className="mt-4 grid gap-4">
+          {groups.map((group, groupIndex) => (
+            <div key={group.id} className="rounded-lg border border-slate-200 bg-white p-3">
+              <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
+                <label className="block text-sm font-semibold">
+                  Group name
+                  <input
+                    value={group.name}
+                    onChange={(event) => updateGroup(group.id, { name: event.target.value })}
+                    className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 px-3"
+                    placeholder={groupIndex === 0 ? "Size" : "Add-ons"}
+                  />
+                </label>
+                <label className="flex min-h-11 items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={group.required}
+                    onChange={(event) => updateGroup(group.id, { required: event.target.checked })}
+                    className="size-5"
+                  />
+                  Required
+                </label>
+                <label className="flex min-h-11 items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={group.multiple}
+                    onChange={(event) => updateGroup(group.id, { multiple: event.target.checked })}
+                    className="size-5"
+                  />
+                  Multiple choices
+                </label>
+              </div>
+
+              <div className="mt-3 grid gap-2">
+                {group.options.map((option) => (
+                  <div key={option.id} className="grid gap-2 sm:grid-cols-[1fr_130px_auto]">
+                    <input
+                      value={option.name}
+                      onChange={(event) => updateOption(group.id, option.id, { name: event.target.value })}
+                      className="min-h-11 rounded-lg border border-slate-300 px-3"
+                      placeholder="Option name, e.g. Large"
+                    />
+                    <input
+                      value={option.price}
+                      onChange={(event) => updateOption(group.id, option.id, { price: event.target.value })}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="min-h-11 rounded-lg border border-slate-300 px-3"
+                      placeholder="+0.00"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => updateGroup(group.id, { options: group.options.filter((item) => item.id !== option.id) })}
+                      disabled={group.options.length === 1}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" onClick={() => updateGroup(group.id, { options: [...group.options, emptyOption()] })}>
+                  Add option
+                </Button>
+                <Button type="button" variant="danger" onClick={() => onChange(groups.filter((item) => item.id !== group.id))}>
+                  Remove group
+                </Button>
+              </div>
+
+              <div className="mt-4 rounded-lg bg-slate-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Customer preview</p>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="font-semibold">{group.name || "Group name"}</span>
+                  <span className="text-xs text-slate-500">{group.required ? "Required" : group.multiple ? "Choose any" : "Optional"}</span>
+                </div>
+                <div className="mt-2 grid gap-2">
+                  {group.options.map((option) => (
+                    <div key={option.id} className="flex min-h-10 items-center justify-between rounded-lg border border-slate-200 bg-white px-3 text-sm">
+                      <span>{option.name || "Option name"}</span>
+                      <span className="text-slate-500">
+                        {Number(option.price || 0) > 0 ? `+${formatMoney(Math.round(Number(option.price) * 100), currency)}` : "Included"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
+          No customizations yet. Add a group if this item has sizes, toppings, sugar level, or paid extras.
+        </p>
+      )}
+    </section>
   );
 }
 
