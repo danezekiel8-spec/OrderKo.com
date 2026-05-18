@@ -26,6 +26,8 @@ export type MenuResponse = {
     description: string;
     address: string;
     currency: string;
+    logoUrl: string | null;
+    bannerImageUrl: string | null;
     isOpen: boolean;
     isServiceActive: boolean;
     isKioskEnabled: boolean;

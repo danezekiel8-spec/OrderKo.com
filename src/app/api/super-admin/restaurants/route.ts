@@ -25,12 +25,16 @@ export async function GET(request: NextRequest) {
     select: {
       id: true,
       name: true,
+      description: true,
+      address: true,
       slug: true,
       isOpen: true,
       isServiceActive: true,
       isKioskEnabled: true,
       superAdminNotes: true,
       currency: true,
+      logoUrl: true,
+      bannerImageUrl: true,
       createdAt: true,
       updatedAt: true,
       staffCredentials: {
@@ -76,12 +80,16 @@ export async function POST(request: NextRequest) {
         select: {
           id: true,
           name: true,
+          description: true,
+          address: true,
           slug: true,
           isOpen: true,
           isServiceActive: true,
           isKioskEnabled: true,
           superAdminNotes: true,
           currency: true,
+          logoUrl: true,
+          bannerImageUrl: true,
           createdAt: true,
           updatedAt: true,
           staffCredentials: {
@@ -113,7 +121,29 @@ export async function POST(request: NextRequest) {
         ],
       });
 
-      return created;
+      return tx.restaurant.findUniqueOrThrow({
+        where: { id: created.id },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          address: true,
+          slug: true,
+          isOpen: true,
+          isServiceActive: true,
+          isKioskEnabled: true,
+          superAdminNotes: true,
+          currency: true,
+          logoUrl: true,
+          bannerImageUrl: true,
+          createdAt: true,
+          updatedAt: true,
+          staffCredentials: {
+            select: { role: true, isActive: true, updatedAt: true },
+          },
+          _count: { select: { categories: true, menuItems: true, orders: true } },
+        },
+      });
     });
 
     return NextResponse.json(
@@ -126,7 +156,7 @@ export async function POST(request: NextRequest) {
             ...credential,
             updatedAt: credential.updatedAt.toISOString(),
           })),
-          _count: { categories: starterCategories.length, menuItems: 0, orders: 0 },
+          _count: restaurant._count,
         },
       },
       { status: 201 },

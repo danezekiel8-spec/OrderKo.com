@@ -13,12 +13,16 @@ type StaffCredentialSummary = {
 type SuperAdminRestaurant = {
   id: string;
   name: string;
+  description: string;
+  address: string;
   slug: string;
   isOpen: boolean;
   isServiceActive: boolean;
   isKioskEnabled: boolean;
   superAdminNotes: string | null;
   currency: string;
+  logoUrl: string | null;
+  bannerImageUrl: string | null;
   createdAt: string;
   updatedAt: string;
   staffCredentials: StaffCredentialSummary[];
@@ -92,6 +96,8 @@ export function SuperAdminDashboard({
         restaurant.name,
         restaurant.slug,
         restaurant.currency,
+        restaurant.logoUrl ?? "",
+        restaurant.bannerImageUrl ?? "",
         restaurant.isOpen ? "open" : "closed",
         restaurant.isServiceActive ? "active" : "paused",
         restaurant.isKioskEnabled ? "kiosk on" : "kiosk off",
@@ -351,6 +357,26 @@ function statusLabel(status: string) {
   return status.toLowerCase().replace(/_/g, " ");
 }
 
+function getRestaurantReadiness(restaurant: SuperAdminRestaurant) {
+  const activeStaffRoles = new Set(
+    restaurant.staffCredentials.filter((credential) => credential.isActive).map((credential) => credential.role),
+  );
+  const checks = [
+    { label: "Profile", done: Boolean(restaurant.name.trim() && restaurant.description.trim() && restaurant.address.trim()) },
+    { label: "Logo", done: Boolean(restaurant.logoUrl) },
+    { label: "Banner", done: Boolean(restaurant.bannerImageUrl) },
+    { label: "Categories", done: restaurant._count.categories > 0 },
+    { label: "Menu items", done: restaurant._count.menuItems > 0 },
+    { label: "Staff PINs", done: ["admin", "cashier", "kitchen"].every((role) => activeStaffRoles.has(role)) },
+    { label: "Test order", done: restaurant._count.orders > 0 },
+    { label: "Ordering open", done: restaurant.isOpen },
+    { label: "Service active", done: restaurant.isServiceActive },
+    { label: "Kiosk enabled", done: restaurant.isKioskEnabled },
+  ];
+  const done = checks.filter((check) => check.done).length;
+  return { checks, done, total: checks.length, ready: done === checks.length };
+}
+
 function LeadsPanel({
   leads,
   total,
@@ -457,6 +483,7 @@ function RestaurantCard({
   onDelete: () => void;
 }) {
   const links = useMemo(() => restaurantLinks(restaurant.slug), [restaurant.slug]);
+  const readiness = useMemo(() => getRestaurantReadiness(restaurant), [restaurant]);
   return (
     <article className="rounded-lg border border-slate-200 p-4">
       <button type="button" className="w-full text-left" onClick={onToggleExpanded}>
@@ -467,6 +494,7 @@ function RestaurantCard({
               <Badge tone={restaurant.isServiceActive ? "good" : "danger"}>{restaurant.isServiceActive ? "Service active" : "Service paused"}</Badge>
               <Badge tone={restaurant.isOpen ? "good" : "warn"}>{restaurant.isOpen ? "Open" : "Closed"}</Badge>
               <Badge tone={restaurant.isKioskEnabled ? "good" : "danger"}>{restaurant.isKioskEnabled ? "Kiosk on" : "Kiosk off"}</Badge>
+              <Badge tone={readiness.ready ? "good" : "warn"}>{readiness.done}/{readiness.total} launch ready</Badge>
             </div>
             <p className="mt-1 text-sm text-slate-500">
               {restaurant.slug} · {restaurant.currency} · Updated {dateLabel(restaurant.updatedAt)}
@@ -527,6 +555,33 @@ function RestaurantCard({
             <CopyLine label="Staff" value={links.staff} />
             <CopyLine label="Admin" value={links.admin} />
           </div>
+
+          <section className="rounded-lg bg-slate-50 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h4 className="font-semibold">Launch readiness</h4>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Advisory checklist before this restaurant goes live.</p>
+              </div>
+              <Badge tone={readiness.ready ? "good" : "warn"}>{readiness.done}/{readiness.total} ready</Badge>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              {readiness.checks.map((check) => (
+                <div
+                  key={check.label}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                    check.done ? "border-teal-200 bg-teal-50 text-teal-900" : "border-amber-200 bg-amber-50 text-amber-900"
+                  }`}
+                >
+                  {check.done ? "✓" : "•"} {check.label}
+                </div>
+              ))}
+            </div>
+            {restaurant._count.orders === 0 ? (
+              <p className="mt-3 rounded-lg bg-white p-3 text-xs leading-5 text-slate-500">
+                Place one test order before handing QR or kiosk links to a restaurant.
+              </p>
+            ) : null}
+          </section>
 
           <NotesForm restaurant={restaurant} busy={busy} onUpdate={onUpdate} />
           <PinResetForm restaurant={restaurant} busy={busy} onUpdate={onUpdate} />

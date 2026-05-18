@@ -12,6 +12,7 @@ export default async function AdminPage() {
     include: {
       categories: { orderBy: { sortOrder: "asc" } },
       menuItems: { where: { isActive: true }, orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }] },
+      staffCredentials: { select: { role: true, isActive: true } },
     },
   });
 
@@ -46,7 +47,10 @@ export default async function AdminPage() {
         address: restaurant.address,
         slug: restaurant.slug,
         currency: restaurant.currency,
+        logoUrl: restaurant.logoUrl,
+        bannerImageUrl: restaurant.bannerImageUrl,
         isOpen: restaurant.isOpen,
+        staffCredentials: restaurant.staffCredentials,
       }}
       categories={restaurant.categories.map((category) => ({
         id: category.id,

@@ -36,8 +36,11 @@ export async function GET(
       description: restaurant.description,
       address: restaurant.address,
       currency: restaurant.currency,
+      logoUrl: restaurant.logoUrl,
+      bannerImageUrl: restaurant.bannerImageUrl,
       isOpen: restaurant.isOpen,
       isServiceActive: restaurant.isServiceActive,
+      isKioskEnabled: restaurant.isKioskEnabled,
     },
     categories: restaurant.categories.map((category) => ({
       id: category.id,

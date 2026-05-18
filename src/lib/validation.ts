@@ -101,6 +101,8 @@ export const restaurantSettingsSchema = z.object({
   address: z.string().min(2).max(300),
   slug: restaurantSlugSchema,
   currency: z.string().min(3).max(3),
+  logoUrl: z.string().url().optional().or(z.literal("")),
+  bannerImageUrl: z.string().url().optional().or(z.literal("")),
   isOpen: z.boolean().default(true),
 });
 

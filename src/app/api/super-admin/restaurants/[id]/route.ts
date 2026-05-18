@@ -25,12 +25,16 @@ const restaurantPatchSchema = z.object({
 const restaurantSelect = {
   id: true,
   name: true,
+  description: true,
+  address: true,
   slug: true,
   isOpen: true,
   isServiceActive: true,
   isKioskEnabled: true,
   superAdminNotes: true,
   currency: true,
+  logoUrl: true,
+  bannerImageUrl: true,
   createdAt: true,
   updatedAt: true,
   staffCredentials: {

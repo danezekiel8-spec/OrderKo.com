@@ -47,10 +47,12 @@ export async function POST(request: NextRequest) {
   if (file.size > maxFileSize) {
     return NextResponse.json({ error: "Image must be 5 MB or smaller." }, { status: 400 });
   }
+  const kind = String(formData?.get("kind") || "menu");
+  const folderKind = kind === "logo" || kind === "banner" ? "branding" : "menu";
 
   const timestamp = Math.round(Date.now() / 1000).toString();
   const uploadParams = {
-    folder: `orderko/${session.restaurantSlug}/menu`,
+    folder: `orderko/${session.restaurantSlug}/${folderKind}`,
     timestamp,
   };
   const signature = signUpload(uploadParams, config.apiSecret);

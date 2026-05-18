@@ -21,7 +21,7 @@ const plans = [
     featured: true,
   },
   {
-    name: "Pilot / Custom",
+    name: "Pilot Setup",
     label: "For rollout help",
     description: "A practical launch plan for restaurants testing OrderKo live.",
     price: "Contact us",

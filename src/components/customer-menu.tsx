@@ -8,9 +8,6 @@ import type { MenuItemDto, MenuResponse, SelectedOptionDto } from "@/types/order
 import { Button, Badge } from "@/components/ui";
 import { OrderKoBrand } from "@/components/orderko-brand";
 
-const G_CAFE_LOGO_SRC = "/assets/g-cafe-logo.jpg";
-const KIOSK_HERO_IMAGE_SRC = "/assets/g-cafe-kiosk-hero.jpg";
-
 const kioskCopy = {
   welcomeHeading: "Order Here",
   startButton: "Start Order",
@@ -51,8 +48,10 @@ function cartCountLabel(count: number) {
   return `${count} item${count === 1 ? "" : "s"}`;
 }
 
-function getPilotRestaurantLogoSrc(slug: string) {
-  return slug === "g-cafe" ? G_CAFE_LOGO_SRC : undefined;
+function restaurantInitials(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const initials = words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("");
+  return initials || "OK";
 }
 
 export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; mode?: "customer" | "kiosk" }) {
@@ -60,7 +59,13 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
   const isKiosk = mode === "kiosk";
   const cartStorageKey = `${isKiosk ? kioskCartStoragePrefix : cartStoragePrefix}${data.restaurant.slug}`;
   const [menuData, setMenuData] = useState(data);
-  const restaurantLogoSrc = getPilotRestaurantLogoSrc(menuData.restaurant.slug);
+  const restaurantLogoSrc = menuData.restaurant.logoUrl || undefined;
+  const restaurantBannerSrc = menuData.restaurant.bannerImageUrl || undefined;
+  const visibleCategories = useMemo(
+    () => menuData.categories.filter((category) => category.items.length > 0),
+    [menuData.categories],
+  );
+  const hasMenuItems = visibleCategories.length > 0;
   const [activeCategory, setActiveCategory] = useState(data.categories[0]?.id ?? "");
   const [selectedItem, setSelectedItem] = useState<MenuItemDto | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -105,6 +110,10 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
   const hasActiveKioskSession = Boolean(
     kioskStarted || cart.length || customerName.trim() || customerNote.trim() || selectedItem || mobileCartOpen || error,
   );
+
+  const currentActiveCategory = visibleCategories.some((category) => category.id === activeCategory)
+    ? activeCategory
+    : visibleCategories[0]?.id ?? "";
 
   const readSavedCart = useCallback(
     (key: string) => {
@@ -465,6 +474,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
       <KioskStartScreen
         restaurant={menuData.restaurant}
         logoSrc={restaurantLogoSrc}
+        bannerImageSrc={restaurantBannerSrc}
         onStart={() => {
           setKioskStarted(true);
           setKioskConfirmation(null);
@@ -501,7 +511,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
           </div>
           <div className="relative -mx-3 sm:-mx-4">
             <div className="flex gap-2 overflow-x-auto px-3 pb-2 [scrollbar-width:none] sm:px-4 sm:pb-3 [&::-webkit-scrollbar]:hidden">
-              {menuData.categories.map((category) => (
+              {visibleCategories.map((category) => (
                 <button
                   key={category.id}
                   onClick={() => {
@@ -509,7 +519,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
                     document.getElementById(category.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
                   className={`${isKiosk ? "min-h-16 px-8 text-xl" : "min-h-10 px-3 text-sm sm:min-h-11 sm:px-4"} shrink-0 rounded-2xl font-semibold shadow-sm transition active:scale-[0.98] ${
-                    activeCategory === category.id
+                    currentActiveCategory === category.id
                       ? "bg-[#8a5a2b] text-white ring-2 ring-[#c9a46f]/70"
                       : "border border-[#d8c8ad] bg-white/90 text-[#33413d]"
                   }`}
@@ -525,11 +535,27 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
 
       <section className={`${isKiosk ? "mx-auto grid max-w-[1500px] gap-6 px-6 py-6 xl:grid-cols-[1fr_430px]" : "mx-auto grid max-w-6xl gap-5 px-3 py-3 sm:px-4 sm:py-4 lg:grid-cols-[1fr_372px] lg:gap-6 lg:py-6"}`}>
         <div className="min-w-0 space-y-5 sm:space-y-7">
-          <section className="overflow-hidden rounded-2xl border border-[#c9a46f] bg-[#d7b98a] text-[#2f2418] shadow-[0_16px_42px_rgba(138,91,43,0.14)] sm:rounded-[1.35rem] sm:shadow-[0_22px_70px_rgba(138,91,43,0.18)]">
+          <section className="relative isolate overflow-hidden rounded-2xl border border-[#c9a46f] bg-[#d7b98a] text-[#2f2418] shadow-[0_16px_42px_rgba(138,91,43,0.14)] sm:rounded-[1.35rem] sm:shadow-[0_22px_70px_rgba(138,91,43,0.18)]">
+            {restaurantBannerSrc ? (
+              // Restaurant banner image is managed by admin and can come from Cloudinary.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={restaurantBannerSrc} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover" />
+            ) : null}
+            <div className={`absolute inset-0 -z-10 ${restaurantBannerSrc ? "bg-[#d7b98a]/86 backdrop-blur-[1px]" : "bg-transparent"}`} />
             <div className="p-4 sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="min-w-0">
                   <RestaurantLogoSlot logoSrc={restaurantLogoSrc} name={menuData.restaurant.name} variant={isKiosk ? "menuKiosk" : "menu"} />
+                  {menuData.restaurant.description?.trim() ? (
+                    <p className={`mt-3 max-w-3xl font-medium text-[#5c432a] ${isKiosk ? "text-xl leading-8" : "text-sm leading-6 sm:text-base"}`}>
+                      {menuData.restaurant.description}
+                    </p>
+                  ) : null}
+                  {menuData.restaurant.address?.trim() ? (
+                    <p className={`mt-1 max-w-3xl text-[#6d5538] ${isKiosk ? "text-lg" : "text-xs sm:text-sm"}`}>
+                      {menuData.restaurant.address}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="hidden min-w-28 rounded-2xl border border-[#b58d57]/45 bg-white/25 p-3 text-center sm:grid">
                   <span className="text-xs font-semibold uppercase text-[#5c432a]">Cart</span>
@@ -551,8 +577,8 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
             </div>
           ) : null}
 
-          {menuData.categories.length ? (
-            menuData.categories.map((category) => (
+          {hasMenuItems ? (
+            visibleCategories.map((category) => (
               <section key={category.id} id={category.id} className="scroll-mt-28 sm:scroll-mt-32">
                 <div className="mb-2 flex items-end justify-between gap-3 sm:mb-3">
                   <div>
@@ -590,12 +616,7 @@ export function CustomerMenu({ data, mode = "customer" }: { data: MenuResponse; 
               </section>
             ))
           ) : (
-            <div className="rounded-2xl border border-dashed border-[#d6d0c4] bg-white p-6 text-center shadow-sm">
-              <h2 className="text-lg font-semibold">Menu is being prepared</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Please check back shortly or ask the counter for today&apos;s available items.
-              </p>
-            </div>
+            <MenuUnavailableState restaurantName={menuData.restaurant.name} isKiosk={isKiosk} />
           )}
         </div>
 
@@ -897,8 +918,8 @@ function MenuImage({
   const [failed, setFailed] = useState(false);
   if (!src || failed) {
     return (
-      <div className={`${className} grid place-items-center bg-[#edf0e8] text-xs font-semibold text-[#79867f]`}>
-        Photo
+      <div className={`${className} grid place-items-center overflow-hidden bg-[linear-gradient(135deg,#edf0e8,#f7f4ed)] text-center text-xs font-semibold text-[#79867f]`}>
+        <span className="rounded-full bg-white/72 px-3 py-1 shadow-sm">Photo</span>
       </div>
     );
   }
@@ -917,13 +938,29 @@ function MenuImage({
   );
 }
 
+function MenuUnavailableState({ restaurantName, isKiosk }: { restaurantName: string; isKiosk: boolean }) {
+  return (
+    <div className={`rounded-2xl border border-dashed border-[#d6d0c4] bg-white text-center shadow-sm ${isKiosk ? "p-10" : "p-6"}`}>
+      <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-[#edf0e8] text-xl font-black text-[#0f766e]">
+        {restaurantInitials(restaurantName)}
+      </div>
+      <h2 className={`mt-4 font-semibold ${isKiosk ? "text-3xl" : "text-lg"}`}>Menu coming soon</h2>
+      <p className={`mx-auto mt-2 max-w-xl text-slate-500 ${isKiosk ? "text-xl leading-8" : "text-sm leading-6"}`}>
+        Please ask the counter for today&apos;s available items.
+      </p>
+    </div>
+  );
+}
+
 function KioskStartScreen({
   restaurant,
   logoSrc,
+  bannerImageSrc,
   onStart,
 }: {
   restaurant: MenuResponse["restaurant"];
   logoSrc?: string;
+  bannerImageSrc?: string;
   onStart: () => void;
 }) {
   const orderingAvailable = restaurant.isOpen && restaurant.isServiceActive;
@@ -933,22 +970,20 @@ function KioskStartScreen({
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f4ed] p-8 text-[#182522]">
-      <section className="relative isolate flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col items-center justify-center gap-7 overflow-hidden rounded-[2rem] border border-[#c9a46f] bg-[#2f2418] p-7 text-center text-white shadow-[0_28px_90px_rgba(28,39,35,0.2)] sm:p-10 lg:p-14">
-        <Image
-          src={KIOSK_HERO_IMAGE_SRC}
-          alt=""
-          fill
-          priority
-          sizes="(max-width: 1200px) 100vw, 1152px"
-          className="absolute inset-0 -z-20 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(21,16,11,0.46),rgba(21,16,11,0.78))]" />
+      <section className="relative isolate flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col items-center justify-center gap-7 overflow-hidden rounded-[2rem] border border-[#c9a46f] bg-[radial-gradient(circle_at_top,#8a5a2b_0%,#2f2418_46%,#182522_100%)] p-7 text-center text-white shadow-[0_28px_90px_rgba(28,39,35,0.2)] sm:p-10 lg:p-14">
+        {bannerImageSrc ? (
+          // Restaurant banner image is managed by admin and can come from Cloudinary.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={bannerImageSrc} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover" />
+        ) : null}
+        <div className={`absolute inset-0 -z-10 ${bannerImageSrc ? "bg-[linear-gradient(180deg,rgba(21,16,11,0.5),rgba(21,16,11,0.82))]" : "bg-[linear-gradient(180deg,rgba(21,16,11,0.08),rgba(21,16,11,0.62))]"}`} />
 
         <div className="flex max-w-4xl flex-col items-center gap-4 rounded-[2rem] bg-black/32 px-6 py-6 text-center shadow-[0_20px_60px_rgba(0,0,0,0.18)] backdrop-blur-sm sm:px-10">
-          {logoSrc ? (
-            <Image src={logoSrc} alt={`${restaurant.name} logo`} width={120} height={120} className="size-20 rounded-2xl bg-white object-contain p-2 sm:size-24" priority />
-          ) : null}
+          <RestaurantLogoSlot logoSrc={logoSrc} name={restaurant.name} variant="kioskWelcome" />
           <h1 className="wonder-glow-style text-5xl font-semibold leading-tight sm:text-7xl">{kioskCopy.welcomeHeading}</h1>
+          <p className="max-w-2xl text-xl font-semibold leading-8 text-white/86">
+            Choose your items, place your order, then pay at the counter.
+          </p>
         </div>
 
         <div className="w-full max-w-3xl">
@@ -991,7 +1026,12 @@ function RestaurantLogoSlot({
       {logoSrc ? (
         <Image src={logoSrc} alt={`${name} logo`} width={420} height={240} className="max-h-24 w-auto max-w-full object-contain sm:max-h-32" />
       ) : (
-        <span className="break-words font-semibold leading-none">{name}</span>
+        <div className="flex items-center gap-3">
+          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#0f766e] text-xl font-black text-white shadow-sm">
+            {restaurantInitials(name)}
+          </span>
+          <span className="break-words font-semibold leading-none">{name}</span>
+        </div>
       )}
     </div>
   );

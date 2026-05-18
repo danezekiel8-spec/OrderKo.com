@@ -24,7 +24,10 @@ type RestaurantSettings = {
   address: string;
   slug: string;
   currency: string;
+  logoUrl: string | null;
+  bannerImageUrl: string | null;
   isOpen: boolean;
+  staffCredentials: { role: string; isActive: boolean }[];
 };
 
 export function AdminDashboard({
@@ -53,10 +56,12 @@ export function AdminDashboard({
   const [error, setError] = useState("");
   const [settingsError, setSettingsError] = useState("");
   const [uploadError, setUploadError] = useState("");
+  const [settingsUploadError, setSettingsUploadError] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [formVersion, setFormVersion] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [isBrandingUploading, setIsBrandingUploading] = useState(false);
   const [pending, startTransition] = useTransition();
   const sortedCategories = useMemo(
     () => [...categoryList].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
@@ -73,6 +78,26 @@ export function AdminDashboard({
     }
     return counts;
   }, [items]);
+  const readinessChecks = useMemo(
+    () => {
+      const activeStaffRoles = new Set(
+        settings.staffCredentials.filter((credential) => credential.isActive).map((credential) => credential.role),
+      );
+      return [
+        { label: "Profile details complete", done: Boolean(settings.name.trim() && settings.description.trim() && settings.address.trim()) },
+        { label: "Logo uploaded", done: Boolean(settings.logoUrl) },
+        { label: "Banner uploaded", done: Boolean(settings.bannerImageUrl) },
+        { label: "Categories created", done: categoryList.length > 0 },
+        { label: "Menu items added", done: items.length > 0 },
+        { label: "Staff PINs configured", done: ["admin", "cashier", "kitchen"].every((role) => activeStaffRoles.has(role)) },
+        { label: "QR base URL configured", done: Boolean(qrBaseUrl) },
+        { label: "Test order placed", done: analytics.totalOrders > 0 },
+        { label: "Restaurant open for ordering", done: settings.isOpen },
+      ];
+    },
+    [analytics.totalOrders, categoryList.length, items.length, qrBaseUrl, settings],
+  );
+  const readinessDone = readinessChecks.filter((check) => check.done).length;
   const menuUrl = useMemo(() => {
     if (qrBaseUrl) return `${qrBaseUrl.replace(/\/$/, "")}/r/${settings.slug}`;
     if (typeof window === "undefined") return `/r/${settings.slug}`;
@@ -127,6 +152,38 @@ export function AdminDashboard({
       setUploadError("Could not upload image. Check the connection and try again.");
     } finally {
       setIsUploading(false);
+      input.value = "";
+    }
+  }
+
+  async function uploadBrandingImage(event: ChangeEvent<HTMLInputElement>, field: "logoUrl" | "bannerImageUrl") {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    setSettingsError("");
+    setSettingsUploadError("");
+    setIsBrandingUploading(true);
+
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+    uploadData.append("kind", field === "logoUrl" ? "logo" : "banner");
+
+    try {
+      const response = await fetch("/api/admin/uploads/menu-image", {
+        method: "POST",
+        body: uploadData,
+      });
+      const result = (await response.json()) as { url?: string; error?: string };
+      if (!response.ok || !result.url) {
+        setSettingsUploadError(result.error ?? "Branding upload failed. Please try again.");
+        return;
+      }
+      setSettings((current) => ({ ...current, [field]: result.url! }));
+    } catch {
+      setSettingsUploadError("Could not upload branding image. Check the connection and try again.");
+    } finally {
+      setIsBrandingUploading(false);
       input.value = "";
     }
   }
@@ -226,6 +283,8 @@ export function AdminDashboard({
       address: String(formData.get("restaurantAddress") ?? ""),
       slug: String(formData.get("restaurantSlug") ?? ""),
       currency: String(formData.get("restaurantCurrency") ?? "").toUpperCase(),
+      logoUrl: String(formData.get("restaurantLogoUrl") ?? ""),
+      bannerImageUrl: String(formData.get("restaurantBannerImageUrl") ?? ""),
       isOpen: formData.get("restaurantIsOpen") === "on",
     };
 
@@ -265,6 +324,25 @@ export function AdminDashboard({
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[420px_1fr]">
           <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm lg:col-span-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Launch readiness</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-500">Use this before printing QR codes or inviting customers to order.</p>
+              </div>
+              <Badge tone={readinessDone === readinessChecks.length ? "good" : "warn"}>
+                {readinessDone}/{readinessChecks.length} ready
+              </Badge>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {readinessChecks.map((check) => (
+                <div key={check.label} className={`rounded-lg border p-3 text-sm font-semibold ${check.done ? "border-teal-200 bg-teal-50 text-teal-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+                  {check.done ? "✓" : "•"} {check.label}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm lg:col-span-2">
             <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
               <form action={saveSettings}>
                 <div className="flex items-start justify-between gap-4">
@@ -275,6 +353,7 @@ export function AdminDashboard({
                   <Badge tone={settings.isOpen ? "good" : "danger"}>{settings.isOpen ? "Open" : "Closed"}</Badge>
                 </div>
                 {settingsError ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{settingsError}</p> : null}
+                {settingsUploadError ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{settingsUploadError}</p> : null}
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <Field name="restaurantName" label="Restaurant name" defaultValue={settings.name} />
                   <Field name="restaurantSlug" label="QR menu slug" defaultValue={settings.slug} />
@@ -303,6 +382,26 @@ export function AdminDashboard({
                     <input name="restaurantIsOpen" type="checkbox" defaultChecked={settings.isOpen} className="size-5" />
                     Accept customer orders
                   </label>
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <BrandingImageField
+                    label="Restaurant logo"
+                    name="restaurantLogoUrl"
+                    value={settings.logoUrl ?? ""}
+                    previewClassName="h-28 w-full object-contain p-3"
+                    isUploading={isBrandingUploading}
+                    onUpload={(event) => uploadBrandingImage(event, "logoUrl")}
+                    onChange={(value) => setSettings((current) => ({ ...current, logoUrl: value }))}
+                  />
+                  <BrandingImageField
+                    label="Banner image"
+                    name="restaurantBannerImageUrl"
+                    value={settings.bannerImageUrl ?? ""}
+                    previewClassName="h-28 w-full object-cover"
+                    isUploading={isBrandingUploading}
+                    onUpload={(event) => uploadBrandingImage(event, "bannerImageUrl")}
+                    onChange={(value) => setSettings((current) => ({ ...current, bannerImageUrl: value }))}
+                  />
                 </div>
                 <Button className="mt-5" disabled={pending}>{pending ? "Saving..." : "Save settings"}</Button>
               </form>
@@ -757,5 +856,51 @@ function Field({
         required={name !== "imageUrl" && !name.endsWith("Pin")}
       />
     </label>
+  );
+}
+
+function BrandingImageField({
+  label,
+  name,
+  value,
+  previewClassName,
+  isUploading,
+  onUpload,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  value: string;
+  previewClassName: string;
+  isUploading: boolean;
+  onUpload: (event: ChangeEvent<HTMLInputElement>) => void;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <label className="block text-sm font-semibold">
+        {label}
+        <input
+          name={name}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Upload or paste image URL"
+          className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
+        />
+      </label>
+      <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        {value ? (
+          // Admin previews external Cloudinary/menu image URLs.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value} alt="" className={previewClassName} />
+        ) : (
+          <div className="grid h-28 place-items-center text-sm font-semibold text-slate-400">No image yet</div>
+        )}
+      </div>
+      <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 transition hover:border-teal-600">
+        {isUploading ? "Uploading..." : "Upload image"}
+        <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={isUploading} onChange={onUpload} />
+      </label>
+    </div>
   );
 }

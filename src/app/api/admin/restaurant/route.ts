@@ -14,7 +14,14 @@ export async function PATCH(request: NextRequest) {
     const body = restaurantSettingsSchema.parse(await request.json());
     const updated = await prisma.restaurant.update({
       where: { id: session.restaurantId },
-      data: body,
+      data: {
+        ...body,
+        logoUrl: body.logoUrl || null,
+        bannerImageUrl: body.bannerImageUrl || null,
+      },
+      include: {
+        staffCredentials: { select: { role: true, isActive: true } },
+      },
     });
 
     return NextResponse.json({
@@ -25,7 +32,10 @@ export async function PATCH(request: NextRequest) {
         address: updated.address,
         slug: updated.slug,
         currency: updated.currency,
+        logoUrl: updated.logoUrl,
+        bannerImageUrl: updated.bannerImageUrl,
         isOpen: updated.isOpen,
+        staffCredentials: updated.staffCredentials,
       },
     });
   } catch (error) {

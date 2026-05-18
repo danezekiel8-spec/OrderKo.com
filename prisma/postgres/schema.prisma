@@ -30,6 +30,8 @@ model Restaurant {
   description      String
   address          String
   currency         String            @default("NZD")
+  logoUrl          String?
+  bannerImageUrl   String?
   isOpen           Boolean           @default(true)
   isServiceActive  Boolean           @default(true)
   isKioskEnabled   Boolean           @default(true)
