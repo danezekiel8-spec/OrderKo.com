@@ -700,6 +700,44 @@ function emptyOptionGroup(): EditableOptionGroup {
   };
 }
 
+function presetOptionGroup(kind: "size" | "sugar" | "addons"): EditableOptionGroup {
+  if (kind === "size") {
+    return {
+      id: makeOptionId(),
+      name: "Size",
+      required: true,
+      multiple: false,
+      options: [
+        { id: makeOptionId(), name: "Regular", price: "" },
+        { id: makeOptionId(), name: "Large", price: "20.00" },
+      ],
+    };
+  }
+  if (kind === "sugar") {
+    return {
+      id: makeOptionId(),
+      name: "Sugar level",
+      required: true,
+      multiple: false,
+      options: [
+        { id: makeOptionId(), name: "25%", price: "" },
+        { id: makeOptionId(), name: "50%", price: "" },
+        { id: makeOptionId(), name: "100%", price: "" },
+      ],
+    };
+  }
+  return {
+    id: makeOptionId(),
+    name: "Add-ons",
+    required: false,
+    multiple: true,
+    options: [
+      { id: makeOptionId(), name: "Pearls", price: "15.00" },
+      { id: makeOptionId(), name: "Cream cheese", price: "25.00" },
+    ],
+  };
+}
+
 function parseEditableOptionGroups(value: string): EditableOptionGroup[] {
   try {
     const parsed = JSON.parse(value || "[]") as {
@@ -785,15 +823,32 @@ function CustomizationBuilder({
             Use this for sizes, sugar level, ice, toppings, or paid extras. Customers will see these choices before adding to cart.
           </p>
         </div>
-        <Button type="button" variant="secondary" onClick={() => onChange([...groups, emptyOptionGroup()])}>
+        <Button type="button" variant="secondary" className="min-h-10 px-3 py-2 text-sm" onClick={() => onChange([...groups, emptyOptionGroup()])}>
           Add group
         </Button>
       </div>
 
+      <div className="mt-3 flex flex-wrap gap-2">
+        {[
+          ["size", "Size"] as const,
+          ["sugar", "Sugar"] as const,
+          ["addons", "Add-ons"] as const,
+        ].map(([kind, label]) => (
+          <button
+            key={kind}
+            type="button"
+            onClick={() => onChange([...groups, presetOptionGroup(kind)])}
+            className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-teal-600 hover:text-teal-800"
+          >
+            + {label}
+          </button>
+        ))}
+      </div>
+
       {groups.length ? (
-        <div className="mt-4 grid gap-4">
+        <div className="mt-4 grid gap-3">
           {groups.map((group, groupIndex) => (
-            <div key={group.id} className="rounded-lg border border-slate-200 bg-white p-3">
+            <div key={group.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
               <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
                 <label className="block text-sm font-semibold">
                   Group name
@@ -826,7 +881,7 @@ function CustomizationBuilder({
 
               <div className="mt-3 grid gap-2">
                 {group.options.map((option) => (
-                  <div key={option.id} className="grid gap-2 sm:grid-cols-[1fr_130px_auto]">
+                  <div key={option.id} className="grid gap-2 sm:grid-cols-[1fr_112px_40px] sm:items-center">
                     <input
                       value={option.name}
                       onChange={(event) => updateOption(group.id, option.id, { name: event.target.value })}
@@ -842,28 +897,29 @@ function CustomizationBuilder({
                       className="min-h-11 rounded-lg border border-slate-300 px-3"
                       placeholder="+0.00"
                     />
-                    <Button
+                    <button
                       type="button"
-                      variant="secondary"
                       onClick={() => updateGroup(group.id, { options: group.options.filter((item) => item.id !== option.id) })}
                       disabled={group.options.length === 1}
+                      className="min-h-10 rounded-lg text-sm font-semibold text-slate-400 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-30"
+                      aria-label={`Remove ${option.name || "option"}`}
                     >
-                      Remove
-                    </Button>
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button type="button" variant="secondary" onClick={() => updateGroup(group.id, { options: [...group.options, emptyOption()] })}>
+                <Button type="button" variant="secondary" className="min-h-10 px-3 py-2 text-sm" onClick={() => updateGroup(group.id, { options: [...group.options, emptyOption()] })}>
                   Add option
                 </Button>
-                <Button type="button" variant="danger" onClick={() => onChange(groups.filter((item) => item.id !== group.id))}>
+                <Button type="button" variant="ghost" className="min-h-10 px-3 py-2 text-sm text-rose-700 hover:bg-rose-50" onClick={() => onChange(groups.filter((item) => item.id !== group.id))}>
                   Remove group
                 </Button>
               </div>
 
-              <div className="mt-4 rounded-lg bg-slate-50 p-3">
+              <div className="mt-3 rounded-lg bg-[#f7f5ef] p-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">Customer preview</p>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <span className="font-semibold">{group.name || "Group name"}</span>
@@ -871,7 +927,7 @@ function CustomizationBuilder({
                 </div>
                 <div className="mt-2 grid gap-2">
                   {group.options.map((option) => (
-                    <div key={option.id} className="flex min-h-10 items-center justify-between rounded-lg border border-slate-200 bg-white px-3 text-sm">
+                    <div key={option.id} className="flex min-h-9 items-center justify-between rounded-lg border border-[#e2ded4] bg-white px-3 text-sm">
                       <span>{option.name || "Option name"}</span>
                       <span className="text-slate-500">
                         {Number(option.price || 0) > 0 ? `+${formatMoney(Math.round(Number(option.price) * 100), currency)}` : "Included"}
@@ -885,7 +941,7 @@ function CustomizationBuilder({
         </div>
       ) : (
         <p className="mt-3 rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
-          No customizations yet. Add a group if this item has sizes, toppings, sugar level, or paid extras.
+          No customizations yet. Use a preset for common choices like size, sugar level, or add-ons.
         </p>
       )}
     </section>
