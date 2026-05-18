@@ -16,7 +16,7 @@ const roles: { value: StaffRole; label: string; hint: string }[] = [
 
 function safeNextPath(value: string | null, fallback: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return fallback;
-  return value;
+  return ["/admin", "/staff/cashier", "/staff/kitchen"].includes(value) ? value : fallback;
 }
 
 export function StaffLogin() {
