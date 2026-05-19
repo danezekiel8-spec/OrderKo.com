@@ -1,0 +1,16 @@
+version: 1.0
+runtime: nodejs22
+build:
+  commands:
+    pre-build:
+      - npm ci
+    build:
+      - npm run build:aws
+run:
+  command: npm run start:aws
+  network:
+    port: 3000
+    env: PORT
+  env:
+    - name: NODE_ENV
+      value: production

@@ -39,10 +39,18 @@ npm run build:render
 npm run start:render
 ```
 
+AWS App Runner uses:
+
+```bash
+npm run build:aws
+npm run start:aws
+```
+
 Production startup deploys Prisma migrations. Restaurants should be created and managed from `/super-admin`; do not rely on seed scripts for live tenant setup.
 
 ## Launch Docs
 
+- `docs/aws-migration-runbook.md`
 - `docs/pilot-launch-checklist.md`
 - `docs/production-readiness-checklist.md`
 - `docs/render-deployment-runbook.md`
