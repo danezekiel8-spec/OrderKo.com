@@ -30,14 +30,14 @@ function envOrDevDefault(name: string, fallback: string) {
   return fallback;
 }
 
-const rolePins: Record<StaffRole, string> = {
-  cashier: envOrDevDefault("CASHIER_PIN", "1111"),
-  kitchen: envOrDevDefault("KITCHEN_PIN", "2222"),
-  admin: envOrDevDefault("ADMIN_PIN", "9999"),
-};
-
 function secret() {
   return envOrDevDefault("STAFF_SESSION_SECRET", "development-only-secret");
+}
+
+function rolePin(role: StaffRole) {
+  const envName = `${role.toUpperCase()}_PIN`;
+  const fallback = role === "cashier" ? "1111" : role === "kitchen" ? "2222" : "9999";
+  return envOrDevDefault(envName, fallback);
 }
 
 function sign(payload: string) {
@@ -139,7 +139,7 @@ export async function validateStaffLogin({
     Boolean(storedHash) &&
     Buffer.byteLength(storedHash!) === Buffer.byteLength(suppliedHash) &&
     timingSafeEqual(Buffer.from(storedHash!), Buffer.from(suppliedHash));
-  const fallbackPinMatches = !storedHash && rolePins[role] === pin.trim();
+  const fallbackPinMatches = !storedHash && rolePin(role) === pin.trim();
 
   if (!dbPinMatches && !fallbackPinMatches) return null;
 
@@ -152,9 +152,10 @@ export async function validateStaffLogin({
 }
 
 export function staffPinStatus(role: StaffRole) {
+  const pin = rolePin(role);
   return {
-    configured: Boolean(rolePins[role]),
-    length: rolePins[role]?.length ?? 0,
+    configured: Boolean(pin),
+    length: pin.length,
   };
 }
 
