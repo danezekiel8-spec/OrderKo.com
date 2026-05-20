@@ -39,11 +39,10 @@ npm run build:render
 npm run start:render
 ```
 
-AWS App Runner uses:
+AWS ECS uses the Docker image:
 
 ```bash
-npm run build:aws
-npm run start:aws
+docker build -t orderko-web .
 ```
 
 Production startup deploys Prisma migrations. Restaurants should be created and managed from `/super-admin`; do not rely on seed scripts for live tenant setup.
