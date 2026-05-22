@@ -1019,13 +1019,20 @@ function RestaurantLogoSlot({
     menuKiosk: "min-h-24 max-w-3xl rounded-[1.5rem] border border-[#b58d57]/35 bg-white/45 px-6 py-5 text-5xl",
     kioskWelcome: "min-h-28 w-full max-w-lg rounded-[2rem] border border-white/30 bg-white/90 px-8 py-6 text-5xl text-[#2f2418] shadow-[0_20px_60px_rgba(21,16,11,0.24)] sm:min-h-36 sm:max-w-2xl sm:text-7xl",
   } satisfies Record<typeof variant, string>;
+  const [failedLogoSrc, setFailedLogoSrc] = useState<string | null>(null);
+  const logoUnavailable = Boolean(logoSrc && failedLogoSrc === logoSrc);
 
   return (
     <div className={`flex items-center justify-center ${classes[variant]}`} aria-label={`${name} logo placeholder`}>
-      {logoSrc ? (
+      {logoSrc && !logoUnavailable ? (
         // Restaurant logos are admin-managed URLs and may come from Cloudinary or another HTTPS host.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoSrc} alt={`${name} logo`} className="max-h-24 w-auto max-w-full object-contain sm:max-h-32" />
+        <img
+          src={logoSrc}
+          alt={`${name} logo`}
+          className="max-h-24 w-auto max-w-full object-contain sm:max-h-32"
+          onError={() => setFailedLogoSrc(logoSrc)}
+        />
       ) : (
         <div className="flex items-center gap-3">
           <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#0f766e] text-xl font-black text-white shadow-sm">
