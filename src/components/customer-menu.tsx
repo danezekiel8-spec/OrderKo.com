@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { formatMoney } from "@/lib/money";
 import type { MenuItemDto, MenuResponse, SelectedOptionDto } from "@/types/orderko";
@@ -1024,7 +1023,9 @@ function RestaurantLogoSlot({
   return (
     <div className={`flex items-center justify-center ${classes[variant]}`} aria-label={`${name} logo placeholder`}>
       {logoSrc ? (
-        <Image src={logoSrc} alt={`${name} logo`} width={420} height={240} className="max-h-24 w-auto max-w-full object-contain sm:max-h-32" />
+        // Restaurant logos are admin-managed URLs and may come from Cloudinary or another HTTPS host.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoSrc} alt={`${name} logo`} className="max-h-24 w-auto max-w-full object-contain sm:max-h-32" />
       ) : (
         <div className="flex items-center gap-3">
           <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#0f766e] text-xl font-black text-white shadow-sm">
