@@ -20,6 +20,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
 RUN npm install prisma@6.19.3 --no-save
 
@@ -27,6 +28,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
 
 EXPOSE 3000
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy --schema prisma/postgres/schema.prisma && node server.js"]
+CMD ["sh", "-c", "node scripts/check-env.js --production && ./node_modules/.bin/prisma migrate deploy --schema prisma/postgres/schema.prisma && node server.js"]

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { LandingLeadForm } from "@/components/landing-lead-form";
 import { LandingPricingPlans } from "@/components/landing-pricing-plans";
 
-const siteUrl = process.env.ORDERKO_QR_BASE_URL?.replace(/\/$/, "") || "https://orderko.com";
+const siteUrl = process.env.ORDERKO_QR_BASE_URL?.replace(/\/$/, "") || "https://orderko.org";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -19,9 +19,14 @@ export const metadata: Metadata = {
     "kitchen display system",
     "small restaurant software",
   ],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "OrderKo - QR Ordering for Small Restaurants",
     description: "Reduce queues, cut wrong orders, and serve customers faster without expensive kiosk hardware.",
+    url: "/",
+    siteName: "OrderKo",
     type: "website",
     images: [{ url: "/assets/orderko-landing-hero.jpg", alt: "Cafe drinks ready for QR ordering" }],
   },

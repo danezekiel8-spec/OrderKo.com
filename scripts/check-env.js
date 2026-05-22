@@ -104,6 +104,9 @@ const cloudinaryValues = ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDI
 if (cloudinaryValues.some(Boolean) && cloudinaryValues.some((entry) => !entry)) {
   errors.push("Cloudinary environment variables must be configured together.");
 }
+if (production && cloudinaryValues.some((entry) => /^your-|^replace-|placeholder/i.test(entry))) {
+  errors.push("Cloudinary environment variables must not use placeholder values in production.");
+}
 
 const smtpUser = value("SMTP_USER");
 const smtpPass = value("SMTP_PASS");

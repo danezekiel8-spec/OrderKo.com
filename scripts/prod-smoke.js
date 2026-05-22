@@ -3,6 +3,12 @@ const assert = require("node:assert/strict");
 
 const baseUrl = (process.env.ORDERKO_SMOKE_BASE_URL || process.env.ORDERKO_QR_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const restaurantSlug = process.env.ORDERKO_SMOKE_RESTAURANT_SLUG || "g-cafe";
+const attempts = Number(process.env.ORDERKO_SMOKE_ATTEMPTS || "6");
+const delayMs = Number(process.env.ORDERKO_SMOKE_DELAY_MS || "10000");
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function request(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -24,9 +30,15 @@ async function request(path, options = {}) {
 }
 
 async function expectOk(path) {
-  const { response, body } = await request(path);
-  assert.ok(response.status >= 200 && response.status < 300, `${path} returned ${response.status}: ${String(body).slice(0, 180)}`);
-  return body;
+  let last = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const result = await request(path);
+    last = result;
+    if (result.response.status >= 200 && result.response.status < 300) return result.body;
+    console.error(`${path} attempt ${attempt}/${attempts} returned ${result.response.status}: ${String(result.body).slice(0, 180)}`);
+    if (attempt < attempts) await sleep(delayMs);
+  }
+  assert.fail(`${path} did not become healthy after ${attempts} attempts. Last status ${last.response.status}: ${String(last.body).slice(0, 180)}`);
 }
 
 async function expectProtected(path) {

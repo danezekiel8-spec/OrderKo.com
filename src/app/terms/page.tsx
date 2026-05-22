@@ -5,6 +5,9 @@ import { OrderKoBrand } from "@/components/orderko-brand";
 export const metadata: Metadata = {
   title: "Terms of Service | OrderKo.com",
   description: "Basic terms for using OrderKo restaurant ordering and operations software.",
+  alternates: {
+    canonical: "/terms",
+  },
 };
 
 export default function TermsPage() {

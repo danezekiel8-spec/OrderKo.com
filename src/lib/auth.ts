@@ -16,6 +16,7 @@ export type StaffSession = {
 };
 
 export const staffCookieName = "orderko_staff_session";
+export const staffSessionMaxAgeSeconds = 60 * 60 * 12;
 const staffRoles = ["cashier", "kitchen", "admin"] as const;
 
 function envOrDevDefault(name: string, fallback: string) {
@@ -92,7 +93,8 @@ export function verifyStaffSessionToken(token?: string | null) {
       !decoded.restaurantId ||
       !decoded.restaurantSlug ||
       !decoded.restaurantName ||
-      !decoded.issuedAt
+      typeof decoded.issuedAt !== "number" ||
+      Date.now() - decoded.issuedAt > staffSessionMaxAgeSeconds * 1000
     ) {
       return null;
     }

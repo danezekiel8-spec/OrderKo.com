@@ -11,6 +11,15 @@ Use this before onboarding any real restaurant or running a live pilot shift.
 - Person monitoring launch:
 - Launch date and time:
 
+## 1A. Launch Roles
+
+- Restaurant manager:
+- OrderKo incident lead:
+- Engineering owner:
+- Staff communications owner:
+- Rollback owner:
+- Backup contact:
+
 ## 2. Environment Check
 
 - `DATABASE_URL` is a persistent managed Postgres database.
@@ -18,8 +27,13 @@ Use this before onboarding any real restaurant or running a live pilot shift.
 - `ORDERKO_SUPER_ADMIN_SECRET` is set and production-safe.
 - `ORDERKO_QR_BASE_URL` uses the final HTTPS production domain.
 - Cloudinary variables are configured if image upload is enabled.
-- Render deploy is green.
+- Production deploy is green.
 - `/api/health` returns healthy.
+- Read-only production smoke passes for the pilot slug:
+
+```bash
+ORDERKO_SMOKE_BASE_URL=https://orderko.org ORDERKO_SMOKE_RESTAURANT_SLUG=<pilot-slug> npm run test:prod-smoke
+```
 
 ## 3. Restaurant Setup
 
@@ -41,6 +55,7 @@ Use this before onboarding any real restaurant or running a live pilot shift.
 - Add-ons/options checked where applicable.
 - Customer menu opens at `/r/[slug]`.
 - Kiosk opens at `/k/[slug]` if enabled.
+- If kiosk is enabled, staff know how to disable kiosk quickly in Super Admin.
 
 ## 5. QR Setup
 
@@ -65,6 +80,7 @@ Use this before onboarding any real restaurant or running a live pilot shift.
 - Kitchen marks ready.
 - Customer status page shows Ready for Pickup.
 - Kitchen marks completed.
+- If kiosk is enabled, one kiosk order is placed and reaches cashier.
 
 ## 7. Staff Briefing
 
@@ -78,14 +94,19 @@ Use this before onboarding any real restaurant or running a live pilot shift.
 ## 8. Fallback Process
 
 - Paper order pad is ready.
+- Paper log includes paper order number, customer name, items/options, payment status, staff owner, and reconciled yes/no.
 - Staff know who decides when to pause ordering.
 - If ordering must stop, close restaurant ordering in Admin or pause service in Super Admin.
 - If kiosk must stop, turn kiosk off in Super Admin.
 - If Wi-Fi drops, continue visible active orders and switch to paper ordering.
 - After reconnect, reconcile paper orders with dashboard orders.
+- Resume QR ordering only after the app is reachable, production smoke passes, one manual order test passes, paper orders are reconciled, and the manager approves reopening.
 
 ## 9. Launch Monitoring
 
+- T+0: run production smoke, open cashier/kitchen screens, and place one canary order.
+- T+15: check logs, target health, staff screens, and any customer confusion.
+- T+60: confirm no new high/blocker issues, then continue normal monitoring.
 - Monitor Render logs during first rush period.
 - Watch cashier and kitchen screens for delays.
 - Record customer/staff confusion.
@@ -97,7 +118,9 @@ Use this before onboarding any real restaurant or running a live pilot shift.
 - Count total orders.
 - Count completed orders.
 - Record canceled/problem orders.
+- Record issue count by severity.
 - Ask cashier what slowed them down.
 - Ask kitchen what was unclear.
+- Record staff confidence and customer confusion themes.
 - Update restaurant notes in Super Admin.
-- Decide whether to launch, pause, or refine before next shift.
+- Decide whether to launch, pause, or refine before next shift, with a named owner and date.

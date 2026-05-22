@@ -136,6 +136,68 @@ Only after ECS passes:
    - `/super-admin`
 5. Keep Render live for rollback.
 
+## ECS 503 Triage - Read Only
+
+Do not change DNS, force a deployment, update the ECS service, or edit target groups unless the launch owner approves.
+
+First split the problem:
+
+- Temporary ECS URL fails and final domain fails: debug ECS service, task startup, target health, database, or env.
+- Temporary ECS URL works but final domain fails: debug DNS, certificate, or load balancer host routing.
+- `/api/health` returns JSON with `ok: false`: app is reachable but database/env/network is failing.
+- ALB/ECS returns plain `503` before app JSON: no healthy target or task is not listening on port `3000`.
+
+Use read-only checks:
+
+```bash
+export AWS_REGION=us-east-1
+export ECS_CLUSTER=default
+export ECS_SERVICE=orderko-web
+export ALB_ARN="arn:aws:elasticloadbalancing:REGION:ACCOUNT:loadbalancer/app/..."
+export APP_URL=https://orderko.org
+
+curl -i "$APP_URL/api/health"
+
+aws ecs describe-services \
+  --region "$AWS_REGION" \
+  --cluster "$ECS_CLUSTER" \
+  --services "$ECS_SERVICE" \
+  --query 'services[0].{desired:desiredCount,running:runningCount,pending:pendingCount,deployments:deployments[*].{status:status,rolloutState:rolloutState,taskDefinition:taskDefinition,desired:desiredCount,running:runningCount,pending:pendingCount},events:events[0:10].[createdAt,message]}'
+
+for target_group_arn in $(aws elbv2 describe-target-groups \
+  --load-balancer-arn "$ALB_ARN" \
+  --region "$AWS_REGION" \
+  --query 'TargetGroups[].TargetGroupArn' \
+  --output text); do
+  echo "---- $target_group_arn"
+  aws elbv2 describe-target-health \
+    --region "$AWS_REGION" \
+    --target-group-arn "$target_group_arn" \
+    --query 'TargetHealthDescriptions[*].{target:Target.Id,port:Target.Port,state:TargetHealth.State,reason:TargetHealth.Reason,description:TargetHealth.Description}'
+done
+```
+
+Likely fixes after approval:
+
+- `Target.ResponseCodeMismatch`: inspect `/api/health` JSON, usually `DATABASE_URL`, RDS security group, or migration failure.
+- `Target.Timeout` or `Target.FailedHealthChecks`: confirm container port `3000`, task running, app logs, and health check grace period.
+- ECS service has repeated stopped tasks: inspect task `stoppedReason` and container exit code before redeploying.
+- Domain fails but ECS URL works: keep ECS unchanged and fix DNS/custom domain routing.
+
+### ECS Express Domain Rule Sync
+
+ECS Express can swap between managed target groups during deployments. If the AWS temporary URL is healthy but `orderko.org` returns `503`, sync the custom host rule to the currently healthy target group:
+
+```bash
+ORDERKO_ALB_ARN="arn:aws:elasticloadbalancing:us-east-1:ACCOUNT:loadbalancer/app/..." \
+ORDERKO_LISTENER_RULE_ARN="arn:aws:elasticloadbalancing:us-east-1:ACCOUNT:listener-rule/app/..." \
+ORDERKO_DOMAIN_HOST="orderko.org" \
+AWS_REGION="us-east-1" \
+npm run aws:sync-domain-target
+```
+
+Only run this after confirming at least one target group is healthy.
+
 ## Rollback
 
 If AWS fails:

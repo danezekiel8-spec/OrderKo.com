@@ -60,10 +60,12 @@ The start command runs Prisma `migrate deploy` against the Postgres schema befor
 After deployment:
 
 ```bash
-ORDERKO_SMOKE_BASE_URL=https://your-render-url.onrender.com npm run test:prod-smoke
+ORDERKO_SMOKE_BASE_URL=https://your-render-url.onrender.com ORDERKO_SMOKE_RESTAURANT_SLUG=<pilot-slug> npm run test:prod-smoke
 ```
 
 This smoke test is read-only. It checks health, the public menu, manifest, and staff route protection.
+
+After launch, run the same smoke test at T+0, T+15, and T+60. Production smoke proves the app is reachable, but it does not replace the manual canary order through customer, cashier, kitchen, and customer status.
 
 ## QR Domain Check
 

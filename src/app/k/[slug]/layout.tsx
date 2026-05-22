@@ -8,6 +8,10 @@ export async function generateMetadata({
   const { slug } = await params;
   return {
     applicationName: "OrderKo Kiosk",
+    robots: {
+      index: false,
+      follow: false,
+    },
     manifest: `/k/${slug}/manifest.webmanifest`,
     appleWebApp: {
       capable: true,

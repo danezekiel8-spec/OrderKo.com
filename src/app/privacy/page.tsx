@@ -5,6 +5,9 @@ import { OrderKoBrand } from "@/components/orderko-brand";
 export const metadata: Metadata = {
   title: "Privacy Policy | OrderKo.com",
   description: "How OrderKo collects and uses restaurant, staff, order, and demo request data.",
+  alternates: {
+    canonical: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {

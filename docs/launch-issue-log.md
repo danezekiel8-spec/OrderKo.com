@@ -6,6 +6,14 @@ Use this during pilot shifts. Keep entries short and factual.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 |  |  |  | Customer / Kiosk / Cashier / Kitchen / Admin | Low / Medium / High / Blocker |  |  |  | Open / Watching / Fixed |
 
+## Paper Fallback Log
+
+Use this when staff switch to paper ordering.
+
+| Time | Paper Order # | Customer Name | Items / Options | Payment Status | Staff Owner | Reconciled In OrderKo? |
+| --- | --- | --- | --- | --- | --- | --- |
+|  |  |  |  | Unpaid / Paid / Refunded |  | Yes / No |
+
 ## Severity Guide
 
 - Low: visual polish or wording issue; ordering still works.

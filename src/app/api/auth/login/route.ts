@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createStaffSession, staffCookieName, validateStaffLogin, type StaffRole } from "@/lib/auth";
+import { createStaffSession, staffCookieName, staffSessionMaxAgeSeconds, validateStaffLogin, type StaffRole } from "@/lib/auth";
 
 const roles = ["cashier", "kitchen", "admin"];
 const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 12,
+      maxAge: staffSessionMaxAgeSeconds,
     });
   } catch (error) {
     console.error("Staff session creation failed", error);

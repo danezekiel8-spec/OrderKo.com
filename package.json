@@ -27,7 +27,8 @@
     "db:seed": "node prisma/seed.js",
     "db:studio": "prisma studio",
     "test:smoke": "node scripts/smoke-test.js",
-    "test:prod-smoke": "node scripts/prod-smoke.js"
+    "test:prod-smoke": "node scripts/prod-smoke.js",
+    "aws:sync-domain-target": "scripts/aws-sync-domain-target-group.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

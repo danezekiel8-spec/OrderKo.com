@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { OrderStatusClient } from "@/components/order-status-client";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Order Status | OrderKo",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function OrderPage({
   params,

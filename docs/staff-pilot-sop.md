@@ -12,6 +12,14 @@
 
 Unpaid orders do not appear in the kitchen queue. Cancel only when the customer confirms they no longer want the order.
 
+Payment exceptions:
+
+- If a customer changes an order before payment, cancel the old order and ask them to place a corrected order.
+- If payment fails, do not mark the order paid.
+- If payment was taken but the order is missing, write a paper order, notify kitchen, and reconcile after the rush.
+- If a duplicate order appears, ask the customer for the correct order number before marking paid.
+- If a refund or cancellation is needed after payment, cancel in cashier/admin and record the reason in the issue log.
+
 ## Kitchen
 
 1. Open `/staff/login`.
@@ -31,9 +39,10 @@ Use `/admin` to add or edit menu items, mark sold out items, update restaurant d
 
 1. Keep visible active orders on screen.
 2. Switch to paper ordering at the counter.
-3. Do not refresh staff tablets unless needed.
-4. When internet returns, check `/staff/cashier` and `/staff/kitchen`.
-5. Reconcile any paper orders before resuming QR ordering.
+3. Record paper order number, customer name, items/options, payment status, staff owner, and reconciled yes/no.
+4. Do not refresh staff tablets unless needed.
+5. When internet returns, check `/staff/cashier` and `/staff/kitchen`.
+6. Reconcile any paper orders before resuming QR ordering.
 
 ## If An Order Looks Missing
 
