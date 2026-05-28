@@ -17,6 +17,18 @@ function safeErrorMessage(error: unknown) {
   return error.message.replace(/postgres(ql)?:\/\/[^@\s]+@/gi, "postgresql://***@").slice(0, 220);
 }
 
+function publicErrorDetails(error: unknown) {
+  if (process.env.NODE_ENV === "production") return {};
+  return {
+    errorName: error instanceof Error ? error.name : typeof error,
+    errorMessage: safeErrorMessage(error),
+    errorCode:
+      typeof error === "object" && error && "code" in error && typeof error.code === "string"
+        ? error.code
+        : "UNKNOWN",
+  };
+}
+
 export async function GET() {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -32,12 +44,7 @@ export async function GET() {
         ok: false,
         database: "error",
         databaseProtocol: databaseProtocol(),
-        errorName: error instanceof Error ? error.name : typeof error,
-        errorMessage: safeErrorMessage(error),
-        errorCode:
-          typeof error === "object" && error && "code" in error && typeof error.code === "string"
-            ? error.code
-            : "UNKNOWN",
+        ...publicErrorDetails(error),
       },
       { status: 503 },
     );

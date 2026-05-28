@@ -291,7 +291,7 @@ export function SuperAdminDashboard({
         <div className="mt-6 grid gap-6 lg:grid-cols-[420px_1fr]">
           <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
             <h2 className="text-xl font-semibold">Create restaurant</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-500">New restaurants start closed until their menu and QR flow are tested.</p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">New restaurants start closed until their menu and QR flow are tested. Staff PINs must be 6-12 digits and not obvious.</p>
             <form className="mt-4 grid gap-3" onSubmit={createRestaurant}>
               <Field name="name" label="Restaurant name" placeholder="G-Cafe" />
               <Field name="slug" label="Slug" placeholder="g-cafe" helper="Lowercase letters, numbers, and hyphens." />
@@ -667,7 +667,7 @@ function PinResetForm({
   return (
     <section className="rounded-lg bg-slate-50 p-4">
       <h4 className="font-semibold">Staff PIN reset</h4>
-      <p className="mt-1 text-xs leading-5 text-slate-500">PINs are hashed. You can check if a role is configured and set a new PIN, but existing PINs are never displayed.</p>
+      <p className="mt-1 text-xs leading-5 text-slate-500">PINs are hashed. New PINs must be 6-12 digits and not obvious. Existing PINs are never displayed.</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {["admin", "cashier", "kitchen"].map((role) => (
           <Badge key={role} tone={configured.has(role) ? "good" : "warn"}>

@@ -358,6 +358,7 @@ export default function Home() {
           <p>OrderKo.com - Built and operated for small food businesses testing faster ordering workflows.</p>
           <div className="flex flex-wrap gap-4">
             <Link href="/staff/login" className="hover:text-[#0f766e]">Staff login</Link>
+            <Link href="/security" className="hover:text-[#0f766e]">Security</Link>
             <Link href="/privacy" className="hover:text-[#0f766e]">Privacy</Link>
             <Link href="/terms" className="hover:text-[#0f766e]">Terms</Link>
             <a href="mailto:hello.orderko@gmail.com" className="hover:text-[#0f766e]">hello.orderko@gmail.com</a>

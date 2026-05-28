@@ -1145,9 +1145,10 @@ function StaffPinManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const result = (await response.json().catch(() => null)) as { error?: string; updatedRoles?: string[] } | null;
+      const result = (await response.json().catch(() => null)) as { error?: string; issues?: { message: string; path: (string | number)[] }[]; updatedRoles?: string[] } | null;
       if (!response.ok) {
-        setPinError(result?.error ?? "Could not update staff PINs.");
+        const issue = result?.issues?.[0];
+        setPinError(issue ? `${issue.path.join(".")}: ${issue.message}` : result?.error ?? "Could not update staff PINs.");
         return;
       }
       setMessage(`Updated ${result?.updatedRoles?.join(", ") || "staff"} PINs.`);
@@ -1158,7 +1159,7 @@ function StaffPinManager() {
   return (
     <form key={pinFormVersion} action={savePins} className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
       <h2 className="text-xl font-semibold">Staff PINs</h2>
-      <p className="mt-1 text-sm leading-6 text-slate-500">PINs are scoped to this restaurant only. Leave a field blank to keep its current PIN.</p>
+      <p className="mt-1 text-sm leading-6 text-slate-500">PINs are scoped to this restaurant only. New PINs must be 6-12 digits and not obvious. Leave a field blank to keep its current PIN.</p>
       {pinError ? <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{pinError}</p> : null}
       {message ? <p className="mt-3 rounded-lg bg-teal-50 p-3 text-sm text-teal-800">{message}</p> : null}
       <div className="mt-4 grid gap-3">

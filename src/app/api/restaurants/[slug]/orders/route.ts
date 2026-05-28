@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
 import { parseOptionGroups } from "@/lib/menu";
+import { checkRateLimit, rateLimitResponse, requestIp } from "@/lib/rate-limit";
 import { placeOrderSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,9 @@ export async function POST(
 ) {
   try {
     const { slug } = await context.params;
+    const rateLimit = checkRateLimit({ key: `order-create:${slug}:${requestIp(request)}`, limit: 20, windowMs: 60 * 1000 });
+    if (rateLimit.limited) return rateLimitResponse(rateLimit.resetAt, "Too many order attempts. Please wait a moment and try again.");
+
     const body = placeOrderSchema.parse(await request.json());
 
     const restaurant = await prisma.restaurant.findUnique({ where: { slug } });

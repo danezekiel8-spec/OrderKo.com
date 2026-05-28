@@ -35,12 +35,6 @@ export const categoryMutationSchema = z.object({
   sortOrder: z.number().int().min(0).max(10000).default(0),
 });
 
-export const staffCredentialsMutationSchema = z.object({
-  cashierPin: z.string().trim().min(4).max(12).optional().or(z.literal("")),
-  kitchenPin: z.string().trim().min(4).max(12).optional().or(z.literal("")),
-  adminPin: z.string().trim().min(4).max(12).optional().or(z.literal("")),
-});
-
 export const leadCreateSchema = z.object({
   name: z.string().trim().min(2, "Enter your name.").max(80),
   email: z
@@ -66,7 +60,33 @@ export const restaurantSlugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and single hyphens between words.")
   .refine((slug) => !reservedRestaurantSlugs.has(slug), "This slug is reserved by OrderKo.");
 
-const restaurantPinSchema = z.string().trim().min(4, "PIN must be at least 4 characters.").max(12, "PIN must be 12 characters or fewer.");
+const weakPins = new Set(["000000", "111111", "222222", "333333", "444444", "555555", "666666", "777777", "888888", "999999", "123456", "654321", "112233", "121212"]);
+
+function isSimpleSequence(pin: string) {
+  if (pin.length < 6) return false;
+  const digits = pin.split("").map(Number);
+  const firstStep = digits[1] - digits[0];
+  if (Math.abs(firstStep) !== 1) return false;
+  return digits.every((digit, index) => index === 0 || digit - digits[index - 1] === firstStep);
+}
+
+export const restaurantPinSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+$/, "PIN must contain numbers only.")
+  .min(6, "PIN must be at least 6 digits.")
+  .max(12, "PIN must be 12 digits or fewer.")
+  .refine((pin) => !/^(\d)\1+$/.test(pin), "PIN cannot use the same digit repeated.")
+  .refine((pin) => !weakPins.has(pin), "Choose a less common PIN.")
+  .refine((pin) => !isSimpleSequence(pin), "PIN cannot be a simple sequence.");
+
+const optionalRestaurantPinSchema = restaurantPinSchema.optional().or(z.literal(""));
+
+export const staffCredentialsMutationSchema = z.object({
+  cashierPin: optionalRestaurantPinSchema,
+  kitchenPin: optionalRestaurantPinSchema,
+  adminPin: optionalRestaurantPinSchema,
+});
 
 export const superAdminRestaurantCreateSchema = z
   .object({

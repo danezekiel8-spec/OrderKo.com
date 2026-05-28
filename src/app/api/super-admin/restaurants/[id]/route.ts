@@ -3,10 +3,10 @@ import { z, ZodError } from "zod";
 import { hashStaffPin, type StaffRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdminRequest } from "@/lib/super-admin-auth";
+import { restaurantPinSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
-const pinSchema = z.string().trim().min(4, "PIN must be at least 4 characters.").max(12, "PIN must be 12 characters or fewer.");
 const staffRoles = ["admin", "cashier", "kitchen"] as const satisfies StaffRole[];
 
 const restaurantPatchSchema = z.object({
@@ -15,9 +15,9 @@ const restaurantPatchSchema = z.object({
   superAdminNotes: z.string().trim().max(3000).optional(),
   staffPins: z
     .object({
-      admin: pinSchema.optional().or(z.literal("")),
-      cashier: pinSchema.optional().or(z.literal("")),
-      kitchen: pinSchema.optional().or(z.literal("")),
+      admin: restaurantPinSchema.optional().or(z.literal("")),
+      cashier: restaurantPinSchema.optional().or(z.literal("")),
+      kitchen: restaurantPinSchema.optional().or(z.literal("")),
     })
     .optional(),
 });
