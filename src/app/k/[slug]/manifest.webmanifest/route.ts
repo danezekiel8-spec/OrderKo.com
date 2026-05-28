@@ -23,15 +23,15 @@ export async function GET(
     categories: ["food", "business", "productivity"],
     icons: [
       {
-        src: "/orderko-icon.svg",
-        sizes: "any",
-        type: "image/svg+xml",
+        src: "/orderko-icon.png",
+        sizes: "512x512",
+        type: "image/png",
         purpose: "any",
       },
       {
-        src: "/orderko-maskable.svg",
-        sizes: "any",
-        type: "image/svg+xml",
+        src: "/orderko-maskable.png",
+        sizes: "512x512",
+        type: "image/png",
         purpose: "maskable",
       },
     ],
@@ -41,7 +41,7 @@ export async function GET(
         short_name: "Kiosk",
         description: "Open the restaurant kiosk ordering screen.",
         url: kioskUrl,
-        icons: [{ src: "/orderko-icon.svg", sizes: "any", type: "image/svg+xml" }],
+        icons: [{ src: "/orderko-icon.png", sizes: "512x512", type: "image/png" }],
       },
     ],
   });

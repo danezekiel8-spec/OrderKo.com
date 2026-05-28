@@ -27,10 +27,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/orderko-icon.svg", type: "image/svg+xml" },
       { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/orderko-icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
