@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { recordAuditLog } from "@/lib/audit-log";
 import { requireRequestRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { menuItemMutationSchema } from "@/lib/validation";
@@ -20,17 +21,31 @@ export async function POST(request: NextRequest) {
     });
     if (!category) return NextResponse.json({ error: "Category not found." }, { status: 404 });
 
-    const item = await prisma.menuItem.create({
-      data: {
+    const item = await prisma.$transaction(async (tx) => {
+      const created = await tx.menuItem.create({
+        data: {
+          restaurantId: session.restaurantId,
+          categoryId: body.categoryId,
+          name: body.name,
+          description: body.description,
+          priceCents: body.priceCents,
+          imageUrl: body.imageUrl || null,
+          optionGroupsJson: body.optionGroupsJson || "[]",
+          isSoldOut: body.isSoldOut,
+        },
+      });
+      await recordAuditLog(tx, {
         restaurantId: session.restaurantId,
-        categoryId: body.categoryId,
-        name: body.name,
-        description: body.description,
-        priceCents: body.priceCents,
-        imageUrl: body.imageUrl || null,
-        optionGroupsJson: body.optionGroupsJson || "[]",
-        isSoldOut: body.isSoldOut,
-      },
+        actorType: "staff",
+        actorRole: session.role,
+        action: "menu_item.created",
+        entityType: "menuItem",
+        entityId: created.id,
+        entityLabel: created.name,
+        metadata: { priceCents: created.priceCents, isSoldOut: created.isSoldOut },
+        request,
+      });
+      return created;
     });
 
     return NextResponse.json({ item }, { status: 201 });

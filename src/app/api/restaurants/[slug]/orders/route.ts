@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { randomBytes } from "crypto";
 import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
+import { recordAuditLog } from "@/lib/audit-log";
 import { prisma } from "@/lib/prisma";
 import { parseOptionGroups } from "@/lib/menu";
 import { checkRateLimit, rateLimitResponse, requestIp } from "@/lib/rate-limit";
@@ -123,7 +124,7 @@ export async function POST(
           const orderNumber = (latest._max.orderNumber ?? 0) + 1;
           const orderCode = `${prefix}-${orderNumber.toString().padStart(3, "0")}`;
 
-          return tx.order.create({
+          const created = await tx.order.create({
             data: {
               restaurantId: restaurant.id,
               orderNumber,
@@ -143,6 +144,21 @@ export async function POST(
             },
             select: { id: true, orderCode: true, orderNumber: true, status: true, customerAccessToken: true },
           });
+          await recordAuditLog(tx, {
+            restaurantId: restaurant.id,
+            actorType: "customer",
+            action: "order.created",
+            entityType: "order",
+            entityId: created.id,
+            entityLabel: created.orderCode,
+            metadata: {
+              orderNumber,
+              totalCents,
+              itemCount: orderItems.reduce((sum, item) => sum + item.quantity, 0),
+            },
+            request,
+          });
+          return created;
         });
         break;
       } catch (error) {

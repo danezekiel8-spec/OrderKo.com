@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { recordAuditLog } from "@/lib/audit-log";
 import { requireRequestRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { categoryMutationSchema } from "@/lib/validation";
@@ -22,12 +23,25 @@ export async function PATCH(
     });
     if (!existing) return NextResponse.json({ error: "Category not found." }, { status: 404 });
 
-    const category = await prisma.category.update({
-      where: { id: existing.id },
-      data: {
-        name: body.name,
-        sortOrder: body.sortOrder,
-      },
+    const category = await prisma.$transaction(async (tx) => {
+      const updated = await tx.category.update({
+        where: { id: existing.id },
+        data: {
+          name: body.name,
+          sortOrder: body.sortOrder,
+        },
+      });
+      await recordAuditLog(tx, {
+        restaurantId: session.restaurantId,
+        actorType: "staff",
+        actorRole: session.role,
+        action: "category.updated",
+        entityType: "category",
+        entityId: updated.id,
+        entityLabel: updated.name,
+        request,
+      });
+      return updated;
     });
 
     return NextResponse.json({ category });
@@ -58,7 +72,28 @@ export async function DELETE(
     );
   }
 
-  const result = await prisma.category.deleteMany({ where: { id, restaurantId: session.restaurantId } });
+  const existing = await prisma.category.findFirst({
+    where: { id, restaurantId: session.restaurantId },
+    select: { id: true, name: true },
+  });
+  if (!existing) return NextResponse.json({ error: "Category not found." }, { status: 404 });
+
+  const result = await prisma.$transaction(async (tx) => {
+    const deleted = await tx.category.deleteMany({ where: { id, restaurantId: session.restaurantId } });
+    if (deleted.count > 0) {
+      await recordAuditLog(tx, {
+        restaurantId: session.restaurantId,
+        actorType: "staff",
+        actorRole: session.role,
+        action: "category.deleted",
+        entityType: "category",
+        entityId: existing.id,
+        entityLabel: existing.name,
+        request,
+      });
+    }
+    return deleted;
+  });
   if (result.count === 0) return NextResponse.json({ error: "Category not found." }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

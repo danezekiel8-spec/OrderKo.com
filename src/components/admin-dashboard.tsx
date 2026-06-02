@@ -43,6 +43,7 @@ export function AdminDashboard({
   categories,
   menuItems,
   analytics,
+  auditLogs,
   qrBaseUrl,
 }: {
   restaurant: RestaurantSettings;
@@ -52,9 +53,20 @@ export function AdminDashboard({
     totalOrders: number;
     completedOrders: number;
     canceledOrders: number;
+    paidOrders: number;
+    readyOrders: number;
     averageOrderValueCents: number;
     bestSellers: { name: string; quantity: number }[];
   };
+  auditLogs: {
+    id: string;
+    actorType: string;
+    actorRole: string | null;
+    action: string;
+    entityType: string;
+    entityLabel: string | null;
+    createdAt: string;
+  }[];
   qrBaseUrl: string | null;
 }) {
   const [settings, setSettings] = useState(restaurant);
@@ -115,10 +127,13 @@ export function AdminDashboard({
         { label: "Staff PINs configured", done: ["admin", "cashier", "kitchen"].every((role) => activeStaffRoles.has(role)) },
         { label: "QR base URL configured", done: Boolean(qrBaseUrl) },
         { label: "Test order placed", done: analytics.totalOrders > 0 },
+        { label: "Cashier payment tested", done: analytics.paidOrders > 0 },
+        { label: "Kitchen flow tested", done: analytics.readyOrders > 0 },
+        { label: "Customer status tested", done: analytics.readyOrders > 0 },
         { label: "Restaurant open for ordering", done: settings.isOpen },
       ];
     },
-    [analytics.totalOrders, categoryList.length, items.length, qrBaseUrl, settings],
+    [analytics.paidOrders, analytics.readyOrders, analytics.totalOrders, categoryList.length, items.length, qrBaseUrl, settings],
   );
   const readinessDone = readinessChecks.filter((check) => check.done).length;
   const menuUrl = useMemo(() => {
@@ -447,7 +462,7 @@ export function AdminDashboard({
                 <p className="mt-1 break-all text-sm leading-6 text-slate-500">{menuUrl}</p>
                 {qrBaseUrl ? (
                   <p className="mt-2 rounded-md bg-teal-50 p-2 text-xs leading-5 text-teal-800">
-                    This QR uses the local network address so phones on the same Wi-Fi can open it.
+                    This QR uses the configured production domain for customer scanning.
                   </p>
                 ) : null}
                 <div className="mt-4 grid place-items-center rounded-lg bg-white p-4">
@@ -664,6 +679,23 @@ export function AdminDashboard({
                     {items.length ? "No menu items match your search." : "No menu items yet. Add your first item from the form."}
                   </p>
                 ) : null}
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
+              <h2 className="text-xl font-semibold">Recent activity</h2>
+              <div className="mt-3 grid gap-2">
+                {auditLogs.length ? auditLogs.map((log) => (
+                  <div key={log.id} className="rounded-lg bg-slate-50 p-3 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-semibold">{log.action.replace(/\./g, " ")}</span>
+                      <span className="text-xs text-slate-500">{new Date(log.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {[log.actorRole ?? log.actorType, log.entityLabel ?? log.entityType].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                )) : <p className="text-sm text-slate-500">Activity appears after menu, staff, and order actions.</p>}
               </div>
             </section>
           </div>

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { recordAuditLog } from "@/lib/audit-log";
 import { requireRequestRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { categoryMutationSchema } from "@/lib/validation";
@@ -12,12 +13,25 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = categoryMutationSchema.parse(await request.json());
-    const category = await prisma.category.create({
-      data: {
+    const category = await prisma.$transaction(async (tx) => {
+      const created = await tx.category.create({
+        data: {
+          restaurantId: session.restaurantId,
+          name: body.name,
+          sortOrder: body.sortOrder,
+        },
+      });
+      await recordAuditLog(tx, {
         restaurantId: session.restaurantId,
-        name: body.name,
-        sortOrder: body.sortOrder,
-      },
+        actorType: "staff",
+        actorRole: session.role,
+        action: "category.created",
+        entityType: "category",
+        entityId: created.id,
+        entityLabel: created.name,
+        request,
+      });
+      return created;
     });
 
     return NextResponse.json({ category }, { status: 201 });

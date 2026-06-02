@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
+import { safeAuditLog } from "@/lib/audit-log";
 import { requireRequestRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,15 @@ export async function POST(request: NextRequest) {
 
   const config = cloudinaryConfig();
   if (!config) {
+    await safeAuditLog({
+      restaurantId: session.restaurantId,
+      actorType: "staff",
+      actorRole: session.role,
+      action: "upload.failed",
+      entityType: "imageUpload",
+      metadata: { reason: "cloudinary_not_configured" },
+      request,
+    });
     return NextResponse.json(
       { error: "Cloudinary is not configured. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET." },
       { status: 500 },
@@ -74,11 +84,32 @@ export async function POST(request: NextRequest) {
   } | null;
 
   if (!response.ok || !result?.secure_url) {
+    await safeAuditLog({
+      restaurantId: session.restaurantId,
+      actorType: "staff",
+      actorRole: session.role,
+      action: "upload.failed",
+      entityType: "imageUpload",
+      metadata: { kind, status: response.status, reason: result?.error?.message ?? "missing_secure_url" },
+      request,
+    });
     return NextResponse.json(
       { error: result?.error?.message ?? "Image upload failed. Please try again." },
       { status: response.ok ? 502 : response.status },
     );
   }
+
+  await safeAuditLog({
+    restaurantId: session.restaurantId,
+    actorType: "staff",
+    actorRole: session.role,
+    action: "upload.succeeded",
+    entityType: "imageUpload",
+    entityId: result.public_id ?? null,
+    entityLabel: kind,
+    metadata: { kind, folder: uploadParams.folder },
+    request,
+  });
 
   return NextResponse.json({
     url: result.secure_url,

@@ -17,15 +17,15 @@
 ORDERKO_SMOKE_BASE_URL=https://orderko.org ORDERKO_SMOKE_RESTAURANT_SLUG=<pilot-slug> npm run test:prod-smoke
 ```
 
-## AWS ECS Gates
+## Render Gates
 
-- ECR image is pushed with both `latest` and the Git SHA tag; record the image digest used for launch.
-- ECS service desired count equals running count.
-- Target group has at least one healthy target on container port `3000`.
-- Temporary ECS URL passes the production smoke test.
-- Final domain passes the same smoke test after DNS cutover.
-- If `/api/health` returns JSON with `ok: false`, inspect the database fields before changing DNS.
-- If the load balancer returns plain `503`, inspect target health and ECS stopped task reasons before changing DNS.
+- Render web service deploy succeeds from the expected Git commit.
+- Render service logs show successful Prisma migration deploy and Next.js startup.
+- Render PostgreSQL is the only production `DATABASE_URL`.
+- Render custom domain points to the active web service.
+- Final domain passes the production smoke test after DNS changes.
+- If `/api/health` returns JSON with `ok: false`, inspect Render database connection and env vars before changing DNS.
+- If Render returns `502` or `503`, inspect deploy logs, service status, and database availability before customer testing.
 
 ## Security Gates
 
@@ -34,6 +34,8 @@ ORDERKO_SMOKE_BASE_URL=https://orderko.org ORDERKO_SMOKE_RESTAURANT_SLUG=<pilot-
 - Admin upload API requires admin session.
 - `.env` is not committed.
 - If Cloudinary secrets were shared or screenshotted, rotate them before launch.
+- Super Admin audit logs show privileged changes.
+- Run `npm audit` before pilot launch and record accepted dependency risks.
 
 ## Operational Gates
 

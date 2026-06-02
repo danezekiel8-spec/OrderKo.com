@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
+import { recordAuditLog } from "@/lib/audit-log";
 import { hashStaffPin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdminRequest } from "@/lib/super-admin-auth";
@@ -32,6 +33,10 @@ export async function GET(request: NextRequest) {
       isServiceActive: true,
       isKioskEnabled: true,
       superAdminNotes: true,
+      subscriptionStatus: true,
+      subscriptionNotes: true,
+      pausedReason: true,
+      pausedAt: true,
       currency: true,
       logoUrl: true,
       bannerImageUrl: true,
@@ -39,6 +44,11 @@ export async function GET(request: NextRequest) {
       updatedAt: true,
       staffCredentials: {
         select: { role: true, isActive: true, updatedAt: true },
+      },
+      orders: {
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: { status: true, paymentStatus: true },
       },
       _count: { select: { categories: true, menuItems: true, orders: true } },
     },
@@ -49,6 +59,7 @@ export async function GET(request: NextRequest) {
       ...restaurant,
       createdAt: restaurant.createdAt.toISOString(),
       updatedAt: restaurant.updatedAt.toISOString(),
+      pausedAt: restaurant.pausedAt?.toISOString() ?? null,
       staffCredentials: restaurant.staffCredentials.map((credential) => ({
         ...credential,
         updatedAt: credential.updatedAt.toISOString(),
@@ -87,6 +98,10 @@ export async function POST(request: NextRequest) {
           isServiceActive: true,
           isKioskEnabled: true,
           superAdminNotes: true,
+          subscriptionStatus: true,
+          subscriptionNotes: true,
+          pausedReason: true,
+          pausedAt: true,
           currency: true,
           logoUrl: true,
           bannerImageUrl: true,
@@ -94,6 +109,11 @@ export async function POST(request: NextRequest) {
           updatedAt: true,
           staffCredentials: {
             select: { role: true, isActive: true, updatedAt: true },
+          },
+          orders: {
+            orderBy: { createdAt: "desc" },
+            take: 20,
+            select: { status: true, paymentStatus: true },
           },
         },
       });
@@ -121,7 +141,7 @@ export async function POST(request: NextRequest) {
         ],
       });
 
-      return tx.restaurant.findUniqueOrThrow({
+      const restaurant = await tx.restaurant.findUniqueOrThrow({
         where: { id: created.id },
         select: {
           id: true,
@@ -133,6 +153,10 @@ export async function POST(request: NextRequest) {
           isServiceActive: true,
           isKioskEnabled: true,
           superAdminNotes: true,
+          subscriptionStatus: true,
+          subscriptionNotes: true,
+          pausedReason: true,
+          pausedAt: true,
           currency: true,
           logoUrl: true,
           bannerImageUrl: true,
@@ -141,9 +165,34 @@ export async function POST(request: NextRequest) {
           staffCredentials: {
             select: { role: true, isActive: true, updatedAt: true },
           },
+          orders: {
+            orderBy: { createdAt: "desc" },
+            take: 20,
+            select: { status: true, paymentStatus: true },
+          },
           _count: { select: { categories: true, menuItems: true, orders: true } },
         },
       });
+      await recordAuditLog(tx, {
+        restaurantId: created.id,
+        actorType: "super_admin",
+        action: "restaurant.created",
+        entityType: "restaurant",
+        entityId: created.id,
+        entityLabel: created.name,
+        metadata: { slug: created.slug },
+        request,
+      });
+      await recordAuditLog(tx, {
+        restaurantId: created.id,
+        actorType: "super_admin",
+        action: "staff_pin.reset",
+        entityType: "staffCredential",
+        metadata: { roles: ["admin", "cashier", "kitchen"], source: "restaurant_creation" },
+        request,
+      });
+
+      return restaurant;
     });
 
     return NextResponse.json(
@@ -152,6 +201,7 @@ export async function POST(request: NextRequest) {
           ...restaurant,
           createdAt: restaurant.createdAt.toISOString(),
           updatedAt: restaurant.updatedAt.toISOString(),
+          pausedAt: restaurant.pausedAt?.toISOString() ?? null,
           staffCredentials: restaurant.staffCredentials.map((credential) => ({
             ...credential,
             updatedAt: credential.updatedAt.toISOString(),

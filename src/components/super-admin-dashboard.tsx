@@ -20,12 +20,17 @@ type SuperAdminRestaurant = {
   isServiceActive: boolean;
   isKioskEnabled: boolean;
   superAdminNotes: string | null;
+  subscriptionStatus: SubscriptionStatus;
+  subscriptionNotes: string | null;
+  pausedReason: string | null;
+  pausedAt: string | null;
   currency: string;
   logoUrl: string | null;
   bannerImageUrl: string | null;
   createdAt: string;
   updatedAt: string;
   staffCredentials: StaffCredentialSummary[];
+  orders: { status: string; paymentStatus: string }[];
   _count: { categories: number; menuItems: number; orders: number };
 };
 
@@ -45,6 +50,38 @@ type SuperAdminLead = {
 type CreatedRestaurant = SuperAdminRestaurant | null;
 type StatusFilter = "all" | "active" | "paused" | "closed" | "kiosk-off";
 type LeadStatus = "NEW" | "CONTACTED" | "QUALIFIED" | "CLOSED";
+type SubscriptionStatus = "TRIAL" | "ACTIVE" | "PAST_DUE" | "PAUSED" | "CANCELED";
+const subscriptionStatuses = ["TRIAL", "ACTIVE", "PAST_DUE", "PAUSED", "CANCELED"] as const;
+
+type AuditLogDto = {
+  id: string;
+  restaurantId: string | null;
+  actorType: string;
+  actorRole: string | null;
+  action: string;
+  entityType: string;
+  entityLabel: string | null;
+  createdAt: string;
+  restaurant?: { name: string; slug: string } | null;
+};
+
+type OpsSnapshot = {
+  app: string;
+  database: string;
+  checkedAt: string;
+  latestOrder: { orderCode: string; createdAt: string; restaurant: { name: string; slug: string } } | null;
+  latestLead: { restaurantName: string; email: string; status: string; createdAt: string } | null;
+  latestUploadFailure: AuditLogDto | null;
+  latestEmailFailure: AuditLogDto | null;
+  recentFailures: AuditLogDto[];
+  counts: {
+    activeRestaurantCount: number;
+    pausedRestaurantCount: number;
+    totalOrdersToday: number;
+    ordersAwaitingPayment: number;
+    ordersPaidNotCompleted: number;
+  };
+};
 
 function absoluteUrl(path: string) {
   if (typeof window === "undefined") return path;
@@ -78,7 +115,32 @@ export function SuperAdminDashboard({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [ops, setOps] = useState<OpsSnapshot | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogDto[]>([]);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    let canceled = false;
+    async function loadOps() {
+      const [opsResponse, auditResponse] = await Promise.all([
+        fetch("/api/super-admin/ops"),
+        fetch("/api/super-admin/audit-logs"),
+      ]);
+      if (canceled) return;
+      if (opsResponse.ok) {
+        const result = (await opsResponse.json()) as OpsSnapshot;
+        setOps(result);
+      }
+      if (auditResponse.ok) {
+        const result = (await auditResponse.json()) as { logs: AuditLogDto[] };
+        setAuditLogs(result.logs);
+      }
+    }
+    void loadOps();
+    return () => {
+      canceled = true;
+    };
+  }, [restaurants, leads]);
 
   const filteredRestaurants = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -102,6 +164,9 @@ export function SuperAdminDashboard({
         restaurant.isServiceActive ? "active" : "paused",
         restaurant.isKioskEnabled ? "kiosk on" : "kiosk off",
         restaurant.superAdminNotes ?? "",
+        restaurant.subscriptionStatus,
+        restaurant.subscriptionNotes ?? "",
+        restaurant.pausedReason ?? "",
         restaurant._count.categories.toString(),
         restaurant._count.menuItems.toString(),
         restaurant._count.orders.toString(),
@@ -315,6 +380,8 @@ export function SuperAdminDashboard({
           </section>
 
           <div className="space-y-6">
+            <OpsPanel ops={ops} />
+            <AuditPanel logs={auditLogs.slice(0, 8)} />
             {created ? <CreatedSummary restaurant={created} /> : null}
             <LeadsPanel leads={filteredLeads} total={leads.length} busy={pending} onUpdateStatus={updateLeadStatus} onDelete={deleteLead} />
             <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
@@ -369,12 +436,91 @@ function getRestaurantReadiness(restaurant: SuperAdminRestaurant) {
     { label: "Menu items", done: restaurant._count.menuItems > 0 },
     { label: "Staff PINs", done: ["admin", "cashier", "kitchen"].every((role) => activeStaffRoles.has(role)) },
     { label: "Test order", done: restaurant._count.orders > 0 },
+    { label: "Cashier tested", done: restaurant.orders.some((order) => order.paymentStatus === "PAID") },
+    { label: "Kitchen tested", done: restaurant.orders.some((order) => ["READY_FOR_PICKUP", "COMPLETED"].includes(order.status)) },
+    { label: "Status tested", done: restaurant.orders.some((order) => ["READY_FOR_PICKUP", "COMPLETED"].includes(order.status)) },
     { label: "Ordering open", done: restaurant.isOpen },
     { label: "Service active", done: restaurant.isServiceActive },
     { label: "Kiosk enabled", done: restaurant.isKioskEnabled },
   ];
   const done = checks.filter((check) => check.done).length;
   return { checks, done, total: checks.length, ready: done === checks.length };
+}
+
+function OpsPanel({ ops }: { ops: OpsSnapshot | null }) {
+  return (
+    <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">Operations monitor</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {ops ? `Checked ${new Date(ops.checkedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Loading current service status..."}
+          </p>
+        </div>
+        <Badge tone={ops?.app === "ok" && ops.database === "ok" ? "good" : "danger"}>
+          {ops ? "Healthy" : "Checking"}
+        </Badge>
+      </div>
+      {ops ? (
+        <>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <MetricTile label="Active restaurants" value={String(ops.counts.activeRestaurantCount)} />
+            <MetricTile label="Paused" value={String(ops.counts.pausedRestaurantCount)} />
+            <MetricTile label="Orders today" value={String(ops.counts.totalOrdersToday)} />
+            <MetricTile label="Awaiting payment" value={String(ops.counts.ordersAwaitingPayment)} />
+            <MetricTile label="Paid in kitchen" value={String(ops.counts.ordersPaidNotCompleted)} />
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <InfoLine label="Latest order" value={ops.latestOrder ? `${ops.latestOrder.orderCode} · ${ops.latestOrder.restaurant.name}` : "None yet"} />
+            <InfoLine label="Latest lead" value={ops.latestLead ? `${ops.latestLead.restaurantName} · ${ops.latestLead.status}` : "None yet"} />
+            <InfoLine label="Latest upload failure" value={ops.latestUploadFailure ? dateLabel(ops.latestUploadFailure.createdAt) : "None recorded"} />
+            <InfoLine label="Latest email failure" value={ops.latestEmailFailure ? dateLabel(ops.latestEmailFailure.createdAt) : "None recorded"} />
+          </div>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function AuditPanel({ logs }: { logs: AuditLogDto[] }) {
+  return (
+    <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
+      <h2 className="text-xl font-semibold">Recent audit logs</h2>
+      <div className="mt-3 grid gap-2">
+        {logs.length ? logs.map((log) => (
+          <div key={log.id} className="rounded-lg bg-slate-50 p-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold">{log.action.replace(/\./g, " ")}</span>
+              <span className="text-xs text-slate-500">{dateLabel(log.createdAt)}</span>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              {[log.restaurant?.name, log.actorRole ?? log.actorType, log.entityLabel].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+        )) : (
+          <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500">No audit logs recorded yet.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function MetricTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-slate-50 p-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-slate-50 p-3 text-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{label}</p>
+      <p className="mt-1 font-semibold text-slate-800">{value}</p>
+    </div>
+  );
 }
 
 function LeadsPanel({
@@ -494,6 +640,7 @@ function RestaurantCard({
               <Badge tone={restaurant.isServiceActive ? "good" : "danger"}>{restaurant.isServiceActive ? "Service active" : "Service paused"}</Badge>
               <Badge tone={restaurant.isOpen ? "good" : "warn"}>{restaurant.isOpen ? "Open" : "Closed"}</Badge>
               <Badge tone={restaurant.isKioskEnabled ? "good" : "danger"}>{restaurant.isKioskEnabled ? "Kiosk on" : "Kiosk off"}</Badge>
+              <Badge tone={subscriptionTone(restaurant.subscriptionStatus)}>{restaurant.subscriptionStatus.replace(/_/g, " ")}</Badge>
               <Badge tone={readiness.ready ? "good" : "warn"}>{readiness.done}/{readiness.total} launch ready</Badge>
             </div>
             <p className="mt-1 text-sm text-slate-500">
@@ -516,7 +663,13 @@ function RestaurantCard({
               disabled={busy}
               onClick={() => {
                 if (restaurant.isServiceActive && !window.confirm(`Pause subscription/service for ${restaurant.name}?`)) return;
-                onUpdate({ isServiceActive: !restaurant.isServiceActive }, "Could not update service status.");
+                onUpdate(
+                  {
+                    isServiceActive: !restaurant.isServiceActive,
+                    ...(restaurant.isServiceActive ? { pausedReason: restaurant.pausedReason ?? "Manual subscription control" } : {}),
+                  },
+                  "Could not update service status.",
+                );
               }}
             >
               {restaurant.isServiceActive ? "Pause service" : "Resume service"}
@@ -584,11 +737,23 @@ function RestaurantCard({
           </section>
 
           <NotesForm restaurant={restaurant} busy={busy} onUpdate={onUpdate} />
+          <SubscriptionForm restaurant={restaurant} busy={busy} onUpdate={onUpdate} />
           <PinResetForm restaurant={restaurant} busy={busy} onUpdate={onUpdate} />
         </div>
       ) : null}
     </article>
   );
+}
+
+function subscriptionTone(status: SubscriptionStatus): "neutral" | "good" | "warn" | "danger" {
+  if (status === "ACTIVE") return "good";
+  if (status === "TRIAL") return "neutral";
+  if (status === "PAST_DUE") return "warn";
+  return "danger";
+}
+
+export function normalizeSubscriptionStatus(status: string): SubscriptionStatus {
+  return subscriptionStatuses.includes(status as SubscriptionStatus) ? (status as SubscriptionStatus) : "TRIAL";
 }
 
 function NotesForm({
@@ -626,6 +791,79 @@ function NotesForm({
       >
         Save notes
       </Button>
+    </form>
+  );
+}
+
+function SubscriptionForm({
+  restaurant,
+  busy,
+  onUpdate,
+}: {
+  restaurant: SuperAdminRestaurant;
+  busy: boolean;
+  onUpdate: (payload: Record<string, unknown>, errorMessage: string) => void;
+}) {
+  return (
+    <form
+      className="rounded-lg bg-slate-50 p-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        onUpdate(
+          {
+            subscriptionStatus: String(data.get("subscriptionStatus")),
+            subscriptionNotes: String(data.get("subscriptionNotes") || ""),
+            pausedReason: String(data.get("pausedReason") || ""),
+          },
+          "Could not save subscription controls.",
+        );
+      }}
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h4 className="font-semibold">Subscription controls</h4>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Internal billing state only. Customers never see billing notes or pause reasons.</p>
+        </div>
+        <Badge tone={subscriptionTone(restaurant.subscriptionStatus)}>{restaurant.subscriptionStatus.replace(/_/g, " ")}</Badge>
+      </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-[180px_1fr]">
+        <label className="block text-sm font-semibold">
+          Status
+          <select
+            name="subscriptionStatus"
+            defaultValue={restaurant.subscriptionStatus}
+            className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
+          >
+            <option value="TRIAL">Trial</option>
+            <option value="ACTIVE">Active</option>
+            <option value="PAST_DUE">Past due</option>
+            <option value="PAUSED">Paused</option>
+            <option value="CANCELED">Canceled</option>
+          </select>
+        </label>
+        <label className="block text-sm font-semibold">
+          Pause reason
+          <input
+            name="pausedReason"
+            defaultValue={restaurant.pausedReason ?? ""}
+            className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
+            placeholder="Unpaid subscription, owner requested pause..."
+          />
+        </label>
+      </div>
+      <label className="mt-3 block text-sm font-semibold">
+        Billing notes
+        <textarea
+          name="subscriptionNotes"
+          defaultValue={restaurant.subscriptionNotes ?? ""}
+          rows={3}
+          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+          placeholder="Plan, billing contact, payment follow-up..."
+        />
+      </label>
+      {restaurant.pausedAt ? <p className="mt-2 text-xs text-slate-500">Paused since {dateLabel(restaurant.pausedAt)}.</p> : null}
+      <Button type="submit" className="mt-3" variant="secondary" disabled={busy}>Save subscription controls</Button>
     </form>
   );
 }

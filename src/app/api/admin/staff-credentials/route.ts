@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { recordAuditLog } from "@/lib/audit-log";
 import { hashStaffPin, requireRequestRole, type StaffRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { staffCredentialsMutationSchema } from "@/lib/validation";
@@ -23,9 +24,9 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Enter at least one PIN to update." }, { status: 400 });
     }
 
-    await prisma.$transaction(
-      updates.map(({ field, role, label }) =>
-        prisma.staffCredential.upsert({
+    await prisma.$transaction(async (tx) => {
+      for (const { field, role, label } of updates) {
+        await tx.staffCredential.upsert({
           where: { restaurantId_role: { restaurantId: session.restaurantId, role } },
           update: {
             pinHash: hashStaffPin(session.restaurantId, role, body[field] ?? ""),
@@ -37,9 +38,18 @@ export async function PATCH(request: NextRequest) {
             label,
             pinHash: hashStaffPin(session.restaurantId, role, body[field] ?? ""),
           },
-        }),
-      ),
-    );
+        });
+      }
+      await recordAuditLog(tx, {
+        restaurantId: session.restaurantId,
+        actorType: "staff",
+        actorRole: session.role,
+        action: "staff_pin.reset",
+        entityType: "staffCredential",
+        metadata: { roles: updates.map((update) => update.role) },
+        request,
+      });
+    });
 
     return NextResponse.json({ ok: true, updatedRoles: updates.map((update) => update.role) });
   } catch (error) {

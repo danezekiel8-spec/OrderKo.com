@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { recordAuditLog, safeAuditLog } from "@/lib/audit-log";
 import { requireRequestRole } from "@/lib/auth";
 import { canTransition } from "@/lib/order-state";
 import { prisma } from "@/lib/prisma";
@@ -41,7 +42,19 @@ export async function PATCH(
         await tx.orderStatusEvent.create({
           data: { orderId: id, status: "PAYMENT_CONFIRMED", note: "Payment confirmed by cashier." },
         });
-        return tx.order.findUnique({ where: { id } });
+        const refreshed = await tx.order.findUnique({ where: { id } });
+        await recordAuditLog(tx, {
+          restaurantId: session.restaurantId,
+          actorType: "staff",
+          actorRole: session.role,
+          action: "order.payment_marked_paid",
+          entityType: "order",
+          entityId: id,
+          entityLabel: order.orderCode,
+          metadata: { previousStatus: order.status, newStatus: "PAYMENT_CONFIRMED" },
+          request,
+        });
+        return refreshed;
       });
       if (!updated) return NextResponse.json({ error: "Order was already updated. Refresh and try again." }, { status: 409 });
       return NextResponse.json({ order: updated });
@@ -70,7 +83,19 @@ export async function PATCH(
         await tx.orderStatusEvent.create({
           data: { orderId: id, status: "CANCELED", note: "Order canceled by staff." },
         });
-        return tx.order.findUnique({ where: { id } });
+        const refreshed = await tx.order.findUnique({ where: { id } });
+        await recordAuditLog(tx, {
+          restaurantId: session.restaurantId,
+          actorType: "staff",
+          actorRole: session.role,
+          action: "order.canceled",
+          entityType: "order",
+          entityId: id,
+          entityLabel: order.orderCode,
+          metadata: { previousStatus: order.status, newStatus: "CANCELED" },
+          request,
+        });
+        return refreshed;
       });
       if (!updated) return NextResponse.json({ error: "This order is already closed." }, { status: 409 });
       return NextResponse.json({ order: updated });
@@ -106,7 +131,19 @@ export async function PATCH(
                 : "Status updated by kitchen.",
           },
         });
-        return tx.order.findUnique({ where: { id } });
+        const refreshed = await tx.order.findUnique({ where: { id } });
+        await recordAuditLog(tx, {
+          restaurantId: session.restaurantId,
+          actorType: "staff",
+          actorRole: session.role,
+          action: "order.status_changed",
+          entityType: "order",
+          entityId: id,
+          entityLabel: order.orderCode,
+          metadata: { previousStatus: order.status, newStatus: body.status },
+          request,
+        });
+        return refreshed;
       });
       if (!updated) return NextResponse.json({ error: "Order was already updated. Refresh and try again." }, { status: 409 });
       return NextResponse.json({
@@ -117,6 +154,16 @@ export async function PATCH(
 
     return NextResponse.json({ error: "Unsupported order action." }, { status: 400 });
   } catch (error) {
+    await safeAuditLog({
+      restaurantId: session.restaurantId,
+      actorType: "staff",
+      actorRole: session.role,
+      action: "order.action_failed",
+      entityType: "order",
+      entityId: id,
+      metadata: { error: error instanceof Error ? error.message : "Unknown error" },
+      request,
+    });
     return handleStaffOrderError(error);
   }
 }

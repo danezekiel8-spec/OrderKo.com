@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { recordAuditLog } from "@/lib/audit-log";
 import { requireRequestRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { menuItemMutationSchema } from "@/lib/validation";
@@ -39,7 +40,21 @@ export async function PATCH(
         },
       });
       if (result.count === 0) return null;
-      return tx.menuItem.findUnique({ where: { id } });
+      const updated = await tx.menuItem.findUnique({ where: { id } });
+      if (updated) {
+        await recordAuditLog(tx, {
+          restaurantId: session.restaurantId,
+          actorType: "staff",
+          actorRole: session.role,
+          action: body.isSoldOut === undefined ? "menu_item.updated" : "menu_item.sold_out_toggled",
+          entityType: "menuItem",
+          entityId: updated.id,
+          entityLabel: updated.name,
+          metadata: { isSoldOut: updated.isSoldOut, priceCents: updated.priceCents },
+          request,
+        });
+      }
+      return updated;
     });
     if (!item) return NextResponse.json({ error: "Menu item not found." }, { status: 404 });
 
@@ -63,9 +78,30 @@ export async function DELETE(
   if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
   const { id } = await context.params;
-  const result = await prisma.menuItem.updateMany({
+  const existing = await prisma.menuItem.findFirst({
     where: { id, restaurantId: session.restaurantId },
-    data: { isActive: false },
+    select: { id: true, name: true },
+  });
+  if (!existing) return NextResponse.json({ error: "Menu item not found." }, { status: 404 });
+
+  const result = await prisma.$transaction(async (tx) => {
+    const deleted = await tx.menuItem.updateMany({
+      where: { id, restaurantId: session.restaurantId },
+      data: { isActive: false },
+    });
+    if (deleted.count > 0) {
+      await recordAuditLog(tx, {
+        restaurantId: session.restaurantId,
+        actorType: "staff",
+        actorRole: session.role,
+        action: "menu_item.deleted",
+        entityType: "menuItem",
+        entityId: existing.id,
+        entityLabel: existing.name,
+        request,
+      });
+    }
+    return deleted;
   });
   if (result.count === 0) return NextResponse.json({ error: "Menu item not found." }, { status: 404 });
   return NextResponse.json({ ok: true });

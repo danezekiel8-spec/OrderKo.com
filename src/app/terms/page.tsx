@@ -29,6 +29,8 @@ export default function TermsPage() {
             <p className="mt-2">
               Restaurants are responsible for keeping menu prices accurate, marking items sold out,
               confirming payments, and handling customer service at the counter.
+              OrderKo provides the ordering workflow; the restaurant remains responsible for fulfillment,
+              food quality, refunds, and customer disputes.
             </p>
           </section>
           <section>
@@ -36,6 +38,7 @@ export default function TermsPage() {
             <p className="mt-2">
               OrderKo is designed for reliable everyday operation, but restaurants should keep a
               manual fallback process available for internet outages, device issues, or unexpected downtime.
+              Pilot restaurants should test cashier, kitchen, kiosk, and customer status flows before live use.
             </p>
           </section>
           <section>
@@ -43,14 +46,22 @@ export default function TermsPage() {
             <p className="mt-2">
               Staff PINs and admin access should be shared only with authorized restaurant personnel.
               Restaurants should request credential changes if access is no longer appropriate.
+              If a PIN or secret is exposed, it should be rotated immediately from admin or super-admin controls.
+            </p>
+          </section>
+          <section>
+            <h2 className="text-xl font-black text-[#16211f]">Pay-at-counter scope</h2>
+            <p className="mt-2">
+              OrderKo records orders and status updates. Unless separately agreed, customers pay directly
+              at the restaurant counter and OrderKo does not act as a payment processor.
             </p>
           </section>
           <section>
             <h2 className="text-xl font-black text-[#16211f]">Contact</h2>
             <p className="mt-2">
               For support or terms questions, contact{" "}
-              <a className="font-bold text-[#0f766e]" href="mailto:support@orderko.com">
-                support@orderko.com
+              <a className="font-bold text-[#0f766e]" href="mailto:hello.orderko@gmail.com">
+                hello.orderko@gmail.com
               </a>
               .
             </p>

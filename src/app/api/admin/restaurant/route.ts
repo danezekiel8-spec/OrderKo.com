@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { recordAuditLog } from "@/lib/audit-log";
 import { requireRequestRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { restaurantSettingsSchema } from "@/lib/validation";
@@ -12,16 +13,30 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = restaurantSettingsSchema.parse(await request.json());
-    const updated = await prisma.restaurant.update({
-      where: { id: session.restaurantId },
-      data: {
-        ...body,
-        logoUrl: body.logoUrl || null,
-        bannerImageUrl: body.bannerImageUrl || null,
-      },
-      include: {
-        staffCredentials: { select: { role: true, isActive: true } },
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      const restaurant = await tx.restaurant.update({
+        where: { id: session.restaurantId },
+        data: {
+          ...body,
+          logoUrl: body.logoUrl || null,
+          bannerImageUrl: body.bannerImageUrl || null,
+        },
+        include: {
+          staffCredentials: { select: { role: true, isActive: true } },
+        },
+      });
+      await recordAuditLog(tx, {
+        restaurantId: session.restaurantId,
+        actorType: "staff",
+        actorRole: session.role,
+        action: "restaurant.settings_updated",
+        entityType: "restaurant",
+        entityId: restaurant.id,
+        entityLabel: restaurant.name,
+        metadata: { isOpen: restaurant.isOpen, slug: restaurant.slug },
+        request,
+      });
+      return restaurant;
     });
 
     return NextResponse.json({

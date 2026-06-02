@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
+import { safeAuditLog } from "@/lib/audit-log";
 import { sendLeadNotificationEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { leadCreateSchema } from "@/lib/validation";
@@ -54,10 +55,38 @@ export async function POST(request: NextRequest) {
       const emailResult = await sendLeadNotificationEmail(lead);
       if (!emailResult.ok) {
         console.warn("Lead notification email was not sent:", emailResult.reason);
+        await safeAuditLog({
+          actorType: "system",
+          action: "lead.email_failed",
+          entityType: "lead",
+          entityId: lead.id,
+          entityLabel: lead.restaurantName,
+          metadata: { reason: emailResult.reason },
+          request,
+        });
       }
     } catch (emailError) {
       console.warn("Lead notification email failed unexpectedly:", emailError);
+      await safeAuditLog({
+        actorType: "system",
+        action: "lead.email_failed",
+        entityType: "lead",
+        entityId: lead.id,
+        entityLabel: lead.restaurantName,
+        metadata: { reason: emailError instanceof Error ? emailError.message : "Unknown error" },
+        request,
+      });
     }
+
+    await safeAuditLog({
+      actorType: "customer",
+      action: "lead.created",
+      entityType: "lead",
+      entityId: lead.id,
+      entityLabel: lead.restaurantName,
+      metadata: { email: lead.email, source: lead.source },
+      request,
+    });
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {

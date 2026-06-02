@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z, ZodError } from "zod";
+import { recordAuditLog, safeAuditLog } from "@/lib/audit-log";
 import { hashStaffPin, type StaffRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdminRequest } from "@/lib/super-admin-auth";
@@ -13,6 +14,9 @@ const restaurantPatchSchema = z.object({
   isServiceActive: z.boolean().optional(),
   isKioskEnabled: z.boolean().optional(),
   superAdminNotes: z.string().trim().max(3000).optional(),
+  subscriptionStatus: z.enum(["TRIAL", "ACTIVE", "PAST_DUE", "PAUSED", "CANCELED"]).optional(),
+  subscriptionNotes: z.string().trim().max(3000).optional(),
+  pausedReason: z.string().trim().max(500).optional(),
   staffPins: z
     .object({
       admin: restaurantPinSchema.optional().or(z.literal("")),
@@ -32,6 +36,10 @@ const restaurantSelect = {
   isServiceActive: true,
   isKioskEnabled: true,
   superAdminNotes: true,
+  subscriptionStatus: true,
+  subscriptionNotes: true,
+  pausedReason: true,
+  pausedAt: true,
   currency: true,
   logoUrl: true,
   bannerImageUrl: true,
@@ -40,14 +48,20 @@ const restaurantSelect = {
   staffCredentials: {
     select: { role: true, isActive: true, updatedAt: true },
   },
+  orders: {
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: { status: true, paymentStatus: true },
+  },
   _count: { select: { categories: true, menuItems: true, orders: true } },
 } as const;
 
-function serializeRestaurant<T extends { createdAt: Date; updatedAt: Date; staffCredentials: { role: string; isActive: boolean; updatedAt: Date }[] }>(restaurant: T) {
+function serializeRestaurant<T extends { createdAt: Date; updatedAt: Date; pausedAt?: Date | null; staffCredentials: { role: string; isActive: boolean; updatedAt: Date }[] }>(restaurant: T) {
   return {
     ...restaurant,
     createdAt: restaurant.createdAt.toISOString(),
     updatedAt: restaurant.updatedAt.toISOString(),
+    pausedAt: restaurant.pausedAt?.toISOString() ?? null,
     staffCredentials: restaurant.staffCredentials.map((credential) => ({
       ...credential,
       updatedAt: credential.updatedAt.toISOString(),
@@ -68,7 +82,16 @@ export async function PATCH(
     const body = restaurantPatchSchema.parse(await request.json());
 
     const restaurant = await prisma.$transaction(async (tx) => {
-      const existing = await tx.restaurant.findUnique({ where: { id }, select: { id: true } });
+      const existing = await tx.restaurant.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          isServiceActive: true,
+          isKioskEnabled: true,
+          subscriptionStatus: true,
+        },
+      });
       if (!existing) throw new Error("Restaurant not found.");
 
       for (const role of staffRoles) {
@@ -88,17 +111,82 @@ export async function PATCH(
             isActive: true,
           },
         });
+        await recordAuditLog(tx, {
+          restaurantId: id,
+          actorType: "super_admin",
+          action: "staff_pin.reset",
+          entityType: "staffCredential",
+          entityLabel: role,
+          metadata: { role },
+          request,
+        });
       }
 
-      return tx.restaurant.update({
+      const updated = await tx.restaurant.update({
         where: { id },
         data: {
           ...(body.isServiceActive === undefined ? {} : { isServiceActive: body.isServiceActive }),
           ...(body.isKioskEnabled === undefined ? {} : { isKioskEnabled: body.isKioskEnabled }),
           ...(body.superAdminNotes === undefined ? {} : { superAdminNotes: body.superAdminNotes || null }),
+          ...(body.subscriptionStatus === undefined ? {} : { subscriptionStatus: body.subscriptionStatus }),
+          ...(body.subscriptionNotes === undefined ? {} : { subscriptionNotes: body.subscriptionNotes || null }),
+          ...(body.pausedReason === undefined ? {} : { pausedReason: body.pausedReason || null }),
+          ...(body.isServiceActive === false ? { pausedAt: new Date() } : {}),
+          ...(body.isServiceActive === true ? { pausedAt: null, pausedReason: null } : {}),
         },
         select: restaurantSelect,
       });
+      if (body.isServiceActive !== undefined && body.isServiceActive !== existing.isServiceActive) {
+        await recordAuditLog(tx, {
+          restaurantId: id,
+          actorType: "super_admin",
+          action: body.isServiceActive ? "restaurant.resumed" : "restaurant.paused",
+          entityType: "restaurant",
+          entityId: id,
+          entityLabel: updated.name,
+          metadata: { previous: existing.isServiceActive, next: body.isServiceActive, reason: body.pausedReason ?? null },
+          request,
+        });
+      }
+      if (body.isKioskEnabled !== undefined && body.isKioskEnabled !== existing.isKioskEnabled) {
+        await recordAuditLog(tx, {
+          restaurantId: id,
+          actorType: "super_admin",
+          action: body.isKioskEnabled ? "kiosk.enabled" : "kiosk.disabled",
+          entityType: "restaurant",
+          entityId: id,
+          entityLabel: updated.name,
+          request,
+        });
+      }
+      if (body.subscriptionStatus !== undefined && body.subscriptionStatus !== existing.subscriptionStatus) {
+        await recordAuditLog(tx, {
+          restaurantId: id,
+          actorType: "super_admin",
+          action: "subscription.status_changed",
+          entityType: "restaurant",
+          entityId: id,
+          entityLabel: updated.name,
+          metadata: { previousStatus: existing.subscriptionStatus, newStatus: body.subscriptionStatus },
+          request,
+        });
+      }
+      if (body.superAdminNotes !== undefined || body.subscriptionNotes !== undefined) {
+        await recordAuditLog(tx, {
+          restaurantId: id,
+          actorType: "super_admin",
+          action: "restaurant.updated",
+          entityType: "restaurant",
+          entityId: id,
+          entityLabel: updated.name,
+          metadata: {
+            superAdminNotesUpdated: body.superAdminNotes !== undefined,
+            subscriptionNotesUpdated: body.subscriptionNotes !== undefined,
+          },
+          request,
+        });
+      }
+      return updated;
     });
 
     return NextResponse.json({
@@ -146,6 +234,15 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async (tx) => {
+      await recordAuditLog(tx, {
+        restaurantId: id,
+        actorType: "super_admin",
+        action: "restaurant.deleted",
+        entityType: "restaurant",
+        entityId: id,
+        entityLabel: existing.name,
+        request,
+      });
       await tx.staffCredential.deleteMany({ where: { restaurantId: id } });
       await tx.menuItem.deleteMany({ where: { restaurantId: id } });
       await tx.category.deleteMany({ where: { restaurantId: id } });
@@ -154,6 +251,13 @@ export async function DELETE(
 
     return NextResponse.json({ ok: true, deletedId: id });
   } catch (error) {
+    await safeAuditLog({
+      actorType: "super_admin",
+      action: "restaurant.delete_failed",
+      entityType: "restaurant",
+      metadata: { error: error instanceof Error ? error.message : "Unknown error" },
+      request,
+    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not delete restaurant." },
       { status: 400 },

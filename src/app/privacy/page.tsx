@@ -28,7 +28,8 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-black text-[#16211f]">Information we collect</h2>
             <p className="mt-2">
               We may store restaurant details, menu data, order details, staff role sessions, uploaded
-              menu image URLs, and contact details submitted through the demo form.
+              menu image URLs, operational audit logs, and contact details submitted through the demo form.
+              Customers do not need to create an account to place a pay-at-counter order.
             </p>
           </section>
           <section>
@@ -36,6 +37,7 @@ export default function PrivacyPage() {
             <p className="mt-2">
               We use this data to process orders, show order status, operate cashier and kitchen
               dashboards, manage restaurant accounts, respond to demo requests, and improve service reliability.
+              Restaurants control their own menu, pricing, sold-out state, and order workflow data.
             </p>
           </section>
           <section>
@@ -46,11 +48,18 @@ export default function PrivacyPage() {
             </p>
           </section>
           <section>
+            <h2 className="text-xl font-black text-[#16211f]">Payments</h2>
+            <p className="mt-2">
+              OrderKo&apos;s MVP is built around pay-at-counter workflows. We do not process online card
+              payments through this application unless a future payment feature is separately enabled.
+            </p>
+          </section>
+          <section>
             <h2 className="text-xl font-black text-[#16211f]">Contact</h2>
             <p className="mt-2">
               For privacy questions or data requests, contact{" "}
-              <a className="font-bold text-[#0f766e]" href="mailto:support@orderko.com">
-                support@orderko.com
+              <a className="font-bold text-[#0f766e]" href="mailto:hello.orderko@gmail.com">
+                hello.orderko@gmail.com
               </a>
               .
             </p>

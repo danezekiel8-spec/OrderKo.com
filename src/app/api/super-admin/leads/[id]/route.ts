@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z, ZodError } from "zod";
+import { safeAuditLog } from "@/lib/audit-log";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdminRequest } from "@/lib/super-admin-auth";
 
@@ -28,6 +29,7 @@ export async function PATCH(
   try {
     const { id } = await context.params;
     const body = leadPatchSchema.parse(await request.json());
+    const previous = await prisma.lead.findUnique({ where: { id }, select: { status: true, restaurantName: true } });
     const lead = await prisma.lead.update({
       where: { id },
       data: { status: body.status },
@@ -43,6 +45,15 @@ export async function PATCH(
         createdAt: true,
         updatedAt: true,
       },
+    });
+    await safeAuditLog({
+      actorType: "super_admin",
+      action: "lead.status_changed",
+      entityType: "lead",
+      entityId: lead.id,
+      entityLabel: lead.restaurantName,
+      metadata: { previousStatus: previous?.status ?? null, newStatus: lead.status },
+      request,
     });
 
     return NextResponse.json({ lead: serializeLead(lead) });
@@ -67,7 +78,15 @@ export async function DELETE(
 
   try {
     const { id } = await context.params;
-    await prisma.lead.delete({ where: { id } });
+    const deleted = await prisma.lead.delete({ where: { id } });
+    await safeAuditLog({
+      actorType: "super_admin",
+      action: "lead.deleted",
+      entityType: "lead",
+      entityId: deleted.id,
+      entityLabel: deleted.restaurantName,
+      request,
+    });
     return NextResponse.json({ ok: true, deletedId: id });
   } catch (error) {
     return NextResponse.json(

@@ -35,9 +35,24 @@ const protections = [
     title: "Production health checks",
     body: "Public health checks confirm service status without exposing database connection details in production responses.",
   },
+  {
+    title: "Operational audit logs",
+    body: "Important restaurant, menu, order, upload, lead, and subscription actions are recorded so operators can investigate what changed.",
+  },
+  {
+    title: "Browser security headers",
+    body: "The app sends practical headers to reduce framing, content-sniffing, referrer, and browser permission risk.",
+  },
 ];
 
-const roadmap = ["Owner accounts with stronger identity controls", "Two-factor authentication for operators", "Expanded audit logs for sensitive admin changes", "Formal incident response and security review process"];
+const roadmap = ["Owner accounts with stronger identity controls", "Two-factor authentication for operators", "External uptime/error monitoring", "Formal incident response and security review process"];
+
+const responseSteps = [
+  "Rotate exposed staff PINs, super-admin secrets, email credentials, and Cloudinary keys immediately.",
+  "Check Super Admin audit logs for unusual restaurant, menu, order, upload, or lead activity.",
+  "Run npm audit before pilot launch and document any accepted dependency risk.",
+  "Contact hello.orderko@gmail.com for security concerns or suspected account misuse.",
+];
 
 export default function SecurityPage() {
   return (
@@ -52,6 +67,10 @@ export default function SecurityPage() {
           <p className="mt-5 leading-8 text-[#5f6c68]">
             OrderKo is designed so small restaurants can accept QR and kiosk orders without exposing staff tools,
             credentials, or operational data to customers.
+          </p>
+          <p className="mt-4 leading-8 text-[#5f6c68]">
+            If credentials are exposed, rotate staff PINs, super-admin secrets, email credentials, and image-upload
+            keys immediately, then review audit logs for unusual activity.
           </p>
         </div>
 
@@ -73,6 +92,21 @@ export default function SecurityPage() {
           <ul className="mt-5 grid gap-3 sm:grid-cols-2">
             {roadmap.map((item) => (
               <li key={item} className="rounded-2xl bg-white/10 p-4 font-semibold text-white/90">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-[#dfe8e2] bg-[#fbfaf6] p-6">
+          <h2 className="text-2xl font-black">If credentials are exposed</h2>
+          <p className="mt-3 leading-8 text-[#5f6c68]">
+            Treat leaked secrets, staff PINs, or upload credentials as an operational incident. Rotate first,
+            then review logs and confirm restaurant workflows still behave normally.
+          </p>
+          <ul className="mt-5 space-y-3">
+            {responseSteps.map((item) => (
+              <li key={item} className="rounded-2xl border border-[#dfe8e2] bg-white p-4 font-semibold text-[#33423f]">
                 {item}
               </li>
             ))}

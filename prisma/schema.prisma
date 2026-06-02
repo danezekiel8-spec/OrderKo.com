@@ -37,12 +37,17 @@ model Restaurant {
   isServiceActive  Boolean           @default(true)
   isKioskEnabled   Boolean           @default(true)
   superAdminNotes  String?
+  subscriptionStatus String          @default("TRIAL")
+  subscriptionNotes  String?
+  pausedReason     String?
+  pausedAt         DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   categories       Category[]
   menuItems        MenuItem[]
   orders           Order[]
   staffCredentials StaffCredential[]
+  auditLogs        AuditLog[]
 }
 
 model Lead {
@@ -161,4 +166,24 @@ model OrderStatusEvent {
   order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId, createdAt])
+}
+
+model AuditLog {
+  id           String      @id @default(cuid())
+  restaurantId String?
+  actorType    String
+  actorRole    String?
+  action       String
+  entityType   String
+  entityId     String?
+  entityLabel  String?
+  metadataJson String      @default("{}")
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime    @default(now())
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId, createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
 }

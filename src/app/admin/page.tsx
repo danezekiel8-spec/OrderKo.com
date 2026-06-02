@@ -24,10 +24,12 @@ export default async function AdminPage() {
     );
   }
 
-  const [totalOrders, completedOrders, canceledOrders, average, orderItems] = await Promise.all([
+  const [totalOrders, completedOrders, canceledOrders, paidOrders, readyOrders, average, orderItems, auditLogs] = await Promise.all([
     prisma.order.count({ where: { restaurantId: restaurant.id } }),
     prisma.order.count({ where: { restaurantId: restaurant.id, status: "COMPLETED" } }),
     prisma.order.count({ where: { restaurantId: restaurant.id, status: "CANCELED" } }),
+    prisma.order.count({ where: { restaurantId: restaurant.id, paymentStatus: "PAID" } }),
+    prisma.order.count({ where: { restaurantId: restaurant.id, status: { in: ["READY_FOR_PICKUP", "COMPLETED"] } } }),
     prisma.order.aggregate({ where: { restaurantId: restaurant.id }, _avg: { totalCents: true } }),
     prisma.orderItem.groupBy({
       by: ["name"],
@@ -35,6 +37,20 @@ export default async function AdminPage() {
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: "desc" } },
       take: 5,
+    }),
+    prisma.auditLog.findMany({
+      where: { restaurantId: restaurant.id },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+      select: {
+        id: true,
+        actorType: true,
+        actorRole: true,
+        action: true,
+        entityType: true,
+        entityLabel: true,
+        createdAt: true,
+      },
     }),
   ]);
 
@@ -71,12 +87,15 @@ export default async function AdminPage() {
         totalOrders,
         completedOrders,
         canceledOrders,
+        paidOrders,
+        readyOrders,
         averageOrderValueCents: Math.round(average._avg.totalCents ?? 0),
         bestSellers: orderItems.map((item) => ({
           name: item.name,
           quantity: item._sum.quantity ?? 0,
         })),
       }}
+      auditLogs={auditLogs.map((log) => ({ ...log, createdAt: log.createdAt.toISOString() }))}
       qrBaseUrl={process.env.ORDERKO_QR_BASE_URL ?? null}
     />
   );
