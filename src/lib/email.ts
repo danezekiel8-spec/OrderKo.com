@@ -14,6 +14,11 @@ function envValue(name: string) {
   return process.env[name]?.trim().replace(/^['"]|['"]$/g, "") || "";
 }
 
+function envNumber(name: string, fallback: number) {
+  const value = Number(envValue(name));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -72,6 +77,7 @@ export async function sendLeadNotificationEmail(lead: LeadNotificationInput) {
   const port = Number(envValue("SMTP_PORT") || "587");
   const user = envValue("SMTP_USER");
   const pass = envValue("SMTP_PASS");
+  const timeoutMs = envNumber("SMTP_TIMEOUT_MS", 8000);
 
   if (!user || !pass) {
     return { ok: false, skipped: true, reason: "SMTP_USER or SMTP_PASS is not configured." };
@@ -84,6 +90,9 @@ export async function sendLeadNotificationEmail(lead: LeadNotificationInput) {
     host,
     port,
     secure: port === 465,
+    connectionTimeout: timeoutMs,
+    greetingTimeout: timeoutMs,
+    socketTimeout: timeoutMs,
     auth: {
       user,
       pass,
@@ -91,16 +100,25 @@ export async function sendLeadNotificationEmail(lead: LeadNotificationInput) {
   });
 
   try {
-    await transporter.sendMail({
-      from,
-      to,
-      replyTo: lead.email,
-      subject: `New OrderKo demo request: ${lead.restaurantName}`,
-      text: formatLeadText(lead),
-      html: formatLeadHtml(lead),
+    const timeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`SMTP email timed out after ${timeoutMs}ms.`)), timeoutMs);
     });
+
+    await Promise.race([
+      transporter.sendMail({
+        from,
+        to,
+        replyTo: lead.email,
+        subject: `New OrderKo demo request: ${lead.restaurantName}`,
+        text: formatLeadText(lead),
+        html: formatLeadHtml(lead),
+      }),
+      timeout,
+    ]);
   } catch (error) {
     return { ok: false, skipped: false, reason: error instanceof Error ? error.message : "SMTP email failed." };
+  } finally {
+    transporter.close();
   }
 
   return { ok: true, skipped: false, reason: "" };
