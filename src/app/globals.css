@@ -127,18 +127,12 @@ button {
     background-color 180ms ease,
     border-color 180ms ease,
     box-shadow 180ms ease,
-    transform 180ms ease,
     opacity 180ms ease;
 }
 
-.landing-page a:hover {
-  transform: translateY(-1px);
-}
-
 .landing-section {
-  animation: landingSectionIn 640ms ease-out both;
-  animation-timeline: view();
-  animation-range: entry 0% cover 26%;
+  content-visibility: auto;
+  contain-intrinsic-size: 720px;
 }
 
 .landing-video-placeholder {

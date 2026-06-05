@@ -43,10 +43,10 @@ export function LandingPricingPlans() {
             type="button"
             aria-expanded={active}
             onClick={() => setActivePlan(plan.name)}
-            className={`landing-hover-lift rounded-[1.35rem] border p-5 text-left backdrop-blur-xl transition-all duration-300 ease-out ${
+            className={`landing-hover-lift rounded-[1.35rem] border p-5 text-left transition-[background-color,border-color,box-shadow,transform] duration-300 ease-out ${
               active
-                ? "border-[#0f766e]/50 bg-[#edfbf7]/72 shadow-xl shadow-[#0f766e]/10"
-                : "border-white/70 bg-white/54 shadow-xl shadow-[#10201d]/6"
+                ? "border-[#0f766e]/50 bg-[#edfbf7]/86 shadow-lg shadow-[#0f766e]/10"
+                : "border-white/70 bg-white/84 shadow-lg shadow-[#10201d]/6"
             }`}
           >
             <div className="flex items-start justify-between gap-4">
@@ -69,7 +69,7 @@ export function LandingPricingPlans() {
               </span>
             </div>
             <div
-              className={`grid overflow-hidden transition-all duration-300 ease-out ${
+              className={`grid overflow-hidden transition-[grid-template-rows,opacity,margin-top] duration-300 ease-out ${
                 active ? "mt-4 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
               }`}
             >

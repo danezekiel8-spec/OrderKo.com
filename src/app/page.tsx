@@ -104,7 +104,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`landing-hover-lift rounded-[1.5rem] border border-white/70 bg-white/62 p-5 shadow-xl shadow-[#10201d]/7 backdrop-blur-xl ${className}`}>
+    <div className={`landing-hover-lift rounded-[1.5rem] border border-white/70 bg-white/84 p-5 shadow-lg shadow-[#10201d]/6 ${className}`}>
       {children}
     </div>
   );
@@ -113,7 +113,7 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 export default function Home() {
   return (
     <main className="landing-page min-h-screen bg-[#f7f4ee] text-[#16211f]">
-      <header className="sticky top-0 z-40 border-b border-white/35 bg-[#fffaf1]/64 px-5 py-2 shadow-sm shadow-[#10201d]/5 backdrop-blur-xl sm:px-8 lg:px-10">
+      <header className="sticky top-0 z-40 border-b border-white/35 bg-[#fffaf1]/78 px-5 py-2 shadow-sm shadow-[#10201d]/5 backdrop-blur-md sm:px-8 lg:px-10">
         <nav className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <Link href="/" className="landing-hover-lift inline-flex items-center gap-3 text-black">
             <Image src="/assets/orderko-logo.png" alt="OrderKo" width={112} height={112} priority className="size-10 rounded-xl object-cover shadow-md shadow-[#10201d]/12 sm:size-11" />
@@ -171,7 +171,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="landing-section bg-white/72 px-5 py-16 backdrop-blur-xl sm:px-8 lg:px-10">
+      <section className="landing-section bg-white/74 px-5 py-16 sm:px-8 lg:px-10">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-3xl">
             <SectionLabel>Why use OrderKo?</SectionLabel>
@@ -197,7 +197,7 @@ export default function Home() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {["No bulky kiosk machines", "No complicated enterprise setup", "No messy chat or handwritten order flow", "A simple system staff can learn quickly"].map((item) => (
-              <div key={item} className="rounded-[1.35rem] border border-white/14 bg-white/8 p-5 font-black backdrop-blur">{item}</div>
+              <div key={item} className="rounded-[1.35rem] border border-white/14 bg-white/8 p-5 font-black">{item}</div>
             ))}
           </div>
         </div>
@@ -223,7 +223,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="landing-section bg-white/72 px-5 py-16 backdrop-blur-xl sm:px-8 lg:px-10">
+      <section className="landing-section bg-white/74 px-5 py-16 sm:px-8 lg:px-10">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-2">
           <div>
             <SectionLabel>Perfect for</SectionLabel>
@@ -256,7 +256,7 @@ export default function Home() {
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {demos.map(([title, text, href]) => (
-              <Link key={title} href={href} className="landing-hover-lift rounded-[1.5rem] border border-white/70 bg-white/70 p-6 shadow-xl shadow-[#10201d]/7 backdrop-blur-xl">
+              <Link key={title} href={href} className="landing-hover-lift rounded-[1.5rem] border border-white/70 bg-white/84 p-6 shadow-lg shadow-[#10201d]/6">
                 <h3 className="text-2xl font-black">{title}</h3>
                 <p className="mt-3 leading-7 text-[#5f6c68]">{text}</p>
                 <span className="mt-5 inline-flex font-black text-[#0f766e]">Open preview</span>
@@ -266,7 +266,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="plans" className="landing-section scroll-mt-24 bg-white/72 px-5 py-16 backdrop-blur-xl sm:px-8 lg:px-10">
+      <section id="plans" className="landing-section scroll-mt-24 bg-white/74 px-5 py-16 sm:px-8 lg:px-10">
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 max-w-3xl">
             <SectionLabel>Plans</SectionLabel>
@@ -274,7 +274,7 @@ export default function Home() {
             <p className="mt-4 leading-8 text-[#5f6c68]">Start with QR ordering, add kiosk workflows when you need them, and keep setup lightweight.</p>
           </div>
           <LandingPricingPlans />
-          <div className="mt-6 flex flex-col gap-3 rounded-[1.35rem] border border-[#dfe8e2] bg-white/62 p-5 shadow-xl shadow-[#10201d]/7 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-6 flex flex-col gap-3 rounded-[1.35rem] border border-[#dfe8e2] bg-white/86 p-5 shadow-lg shadow-[#10201d]/6 sm:flex-row sm:items-center sm:justify-between">
             <p className="font-bold leading-7 text-[#5f6c68]">No expensive kiosk machines. No long setup. Cancel or adjust after your pilot.</p>
             <Link href="#contact" className="rounded-full bg-[#0f766e] px-6 py-3 text-center text-sm font-black text-white hover:bg-[#0d5f59]">Request pilot pricing</Link>
           </div>
@@ -298,7 +298,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="landing-section bg-white/72 px-5 py-16 backdrop-blur-xl sm:px-8 lg:px-10">
+      <section className="landing-section bg-white/74 px-5 py-16 sm:px-8 lg:px-10">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <SectionLabel>What happens after you request a demo?</SectionLabel>
@@ -336,8 +336,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="contact" className="landing-section scroll-mt-24 bg-white/72 px-5 py-16 backdrop-blur-xl sm:px-8 lg:px-10">
-        <div className="mx-auto grid max-w-7xl gap-8 rounded-[1.75rem] border border-white/70 bg-white/58 p-5 shadow-2xl shadow-[#10201d]/10 backdrop-blur-xl lg:grid-cols-[0.85fr_1.15fr] lg:p-7">
+      <section id="contact" className="landing-section scroll-mt-24 bg-white/74 px-5 py-16 sm:px-8 lg:px-10">
+        <div className="mx-auto grid max-w-7xl gap-8 rounded-[1.75rem] border border-white/70 bg-white/88 p-5 shadow-xl shadow-[#10201d]/8 lg:grid-cols-[0.85fr_1.15fr] lg:p-7">
           <div>
             <SectionLabel>Request a demo</SectionLabel>
             <h2 className="mt-3 text-3xl font-black leading-tight sm:text-5xl">Tell us about your restaurant.</h2>
