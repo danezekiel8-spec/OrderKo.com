@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 const attempts = new Map<string, { count: number; resetAt: number }>();
 const windowMs = 10 * 60 * 1000;
 const maxAttempts = 5;
+const rateLimitEnabled = process.env.NODE_ENV === "production";
 
 function requestKey(request: NextRequest) {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
@@ -28,7 +29,7 @@ function isRateLimited(key: string) {
 
 export async function POST(request: NextRequest) {
   const key = requestKey(request);
-  if (isRateLimited(key)) {
+  if (rateLimitEnabled && isRateLimited(key)) {
     return NextResponse.json({ error: "Too many requests. Please try again in a few minutes." }, { status: 429 });
   }
 
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {
     if (error instanceof ZodError) {
-      return NextResponse.json({ error: "Check the form and try again.", issues: error.issues }, { status: 400 });
+      return NextResponse.json({ error: error.issues[0]?.message || "Check the form and try again.", issues: error.issues }, { status: 400 });
     }
 
     console.error("Lead capture failed", error);
