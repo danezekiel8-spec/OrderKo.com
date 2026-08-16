@@ -10,7 +10,7 @@ type LeadNotificationInput = {
   createdAt: Date;
 };
 
-function envValue(name: string) {
+export function envValue(name: string) {
   return process.env[name]?.trim().replace(/^['"]|['"]$/g, "") || "";
 }
 
@@ -70,6 +70,29 @@ function formatLeadHtml(lead: LeadNotificationInput) {
       </table>
     </div>
   `;
+}
+
+export function leadNotificationEmailStatus() {
+  const host = envValue("SMTP_HOST") || "smtp.gmail.com";
+  const port = Number(envValue("SMTP_PORT") || "587");
+  const user = envValue("SMTP_USER");
+  const pass = envValue("SMTP_PASS");
+  const to = envValue("LEAD_NOTIFICATION_EMAIL") || user;
+  const from = envValue("LEAD_EMAIL_FROM") || (user ? `OrderKo <${user}>` : "");
+  const missing = [
+    !user ? "SMTP_USER" : "",
+    !pass ? "SMTP_PASS" : "",
+    !to ? "LEAD_NOTIFICATION_EMAIL" : "",
+  ].filter(Boolean);
+
+  return {
+    configured: missing.length === 0,
+    missing,
+    host,
+    port,
+    to,
+    from,
+  };
 }
 
 export async function sendLeadNotificationEmail(lead: LeadNotificationInput) {

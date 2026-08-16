@@ -61,13 +61,24 @@ type AuditLogDto = {
   action: string;
   entityType: string;
   entityLabel: string | null;
+  metadata?: unknown;
   createdAt: string;
   restaurant?: { name: string; slug: string } | null;
+};
+
+type LeadEmailStatus = {
+  configured: boolean;
+  missing: string[];
+  host: string;
+  port: number;
+  to: string;
+  from: string;
 };
 
 type OpsSnapshot = {
   app: string;
   database: string;
+  leadEmail: LeadEmailStatus;
   checkedAt: string;
   latestOrder: { orderCode: string; createdAt: string; restaurant: { name: string; slug: string } } | null;
   latestLead: { restaurantName: string; email: string; status: string; createdAt: string } | null;
@@ -99,6 +110,12 @@ function restaurantLinks(slug: string) {
 
 function dateLabel(value: string) {
   return new Date(value).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+}
+
+function auditReason(log: AuditLogDto | null) {
+  if (!log || !log.metadata || typeof log.metadata !== "object" || !("reason" in log.metadata)) return "";
+  const reason = (log.metadata as { reason?: unknown }).reason;
+  return typeof reason === "string" ? reason : "";
 }
 
 export function SuperAdminDashboard({
@@ -448,6 +465,7 @@ function getRestaurantReadiness(restaurant: SuperAdminRestaurant) {
 }
 
 function OpsPanel({ ops }: { ops: OpsSnapshot | null }) {
+  const latestEmailReason = auditReason(ops?.latestEmailFailure ?? null);
   return (
     <section className="rounded-lg border border-[#dbe4df] bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -473,8 +491,16 @@ function OpsPanel({ ops }: { ops: OpsSnapshot | null }) {
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <InfoLine label="Latest order" value={ops.latestOrder ? `${ops.latestOrder.orderCode} · ${ops.latestOrder.restaurant.name}` : "None yet"} />
             <InfoLine label="Latest lead" value={ops.latestLead ? `${ops.latestLead.restaurantName} · ${ops.latestLead.status}` : "None yet"} />
+            <InfoLine
+              label="Lead email notifications"
+              value={ops.leadEmail.configured ? `On · ${ops.leadEmail.to}` : `Off · missing ${ops.leadEmail.missing.join(", ")}`}
+            />
+            <InfoLine label="SMTP server" value={`${ops.leadEmail.host}:${ops.leadEmail.port}`} />
             <InfoLine label="Latest upload failure" value={ops.latestUploadFailure ? dateLabel(ops.latestUploadFailure.createdAt) : "None recorded"} />
-            <InfoLine label="Latest email failure" value={ops.latestEmailFailure ? dateLabel(ops.latestEmailFailure.createdAt) : "None recorded"} />
+            <InfoLine
+              label="Latest email failure"
+              value={ops.latestEmailFailure ? `${dateLabel(ops.latestEmailFailure.createdAt)}${latestEmailReason ? ` · ${latestEmailReason}` : ""}` : "None recorded"}
+            />
           </div>
         </>
       ) : null}

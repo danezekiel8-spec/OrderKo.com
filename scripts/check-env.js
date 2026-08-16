@@ -115,7 +115,7 @@ const smtpPort = value("SMTP_PORT");
 const leadNotificationEmail = value("LEAD_NOTIFICATION_EMAIL");
 const leadEmailFrom = value("LEAD_EMAIL_FROM");
 if (production && (!smtpUser || !smtpPass)) {
-  warnings.push("SMTP_USER or SMTP_PASS is not set; lead requests will save to the database but will not send email notifications.");
+  errors.push("SMTP_USER and SMTP_PASS are required in production so demo request email notifications are not silently disabled.");
 }
 if (smtpUser && !isEmail(smtpUser)) {
   errors.push("SMTP_USER must be a valid email address.");

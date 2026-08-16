@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { leadNotificationEmailStatus } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdminRequest } from "@/lib/super-admin-auth";
 
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     app: "ok",
     database: "ok",
+    leadEmail: leadNotificationEmailStatus(),
     checkedAt: new Date().toISOString(),
     latestOrder: latestOrder
       ? {

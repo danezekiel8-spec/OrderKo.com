@@ -25,7 +25,8 @@ The local SQLite setup is intentionally kept for fast development. Render must u
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
-- `SMTP_USER`, `SMTP_PASS`, `LEAD_NOTIFICATION_EMAIL`, `LEAD_EMAIL_FROM`: optional but recommended for demo request emails
+- `SMTP_USER`, `SMTP_PASS`: required so demo request email notifications are sent
+- `LEAD_NOTIFICATION_EMAIL`, `LEAD_EMAIL_FROM`: recommended; notifications fall back to `SMTP_USER` when `LEAD_NOTIFICATION_EMAIL` is blank
 
 Run locally before deployment:
 
